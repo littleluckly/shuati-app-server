@@ -101,7 +101,7 @@ exports.getTagsBySubjectId = async (req, res, next) => {
       .collection("questions")
       .aggregate([
         { $match: { subjectId: new require("mongodb").ObjectId(id) } },
-        { $unwind: "$tags" },
+        { $unwind: { path: "$tags", preserveNullAndEmptyArrays: false } },
         {
           $group: {
             _id: "$tags",

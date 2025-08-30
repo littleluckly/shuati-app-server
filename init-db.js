@@ -78,6 +78,9 @@ async function initDB() {
     const questions = questionsFromMeta.map((question) => ({
       ...question,
       subjectId: subjects[0]._id,
+      isEnabled: true, // 添加启用状态字段
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }));
 
     if (questions.length > 0) {

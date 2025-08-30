@@ -18,7 +18,7 @@ exports.getRandomQuestion = async (req, res, next) => {
       .toArray();
 
     if (questions.length === 0) {
-      return res.status(404).json(ApiResponse.error("暂无符合条件的题目"));
+      return res.json(ApiResponse.success(null, "暂无符合条件的题目"));
     }
 
     res.json(ApiResponse.success(questions[0]));

@@ -10,7 +10,7 @@ async function connectDB() {
 
   const client = new MongoClient(uri);
   await client.connect();
-  db = client.db("exam_app");
+  db = client.db("shuati"); // 数据库名称
   console.log("✅ MongoDB 连接成功！");
   return db;
 }
