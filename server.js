@@ -28,8 +28,15 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`🚀 服务已启动：http://0.0.0.0:${port}`);
   console.log(`📘 API 文档：`);
   console.log(`   GET  /subjects`);
+  console.log(`   GET  /subjects/all`);
   console.log(`   GET  /subjects/:id`);
+  console.log(`   GET  /subjects/:id/tags`);
+  console.log(`   POST /subjects/:id/user-tags`);
+  console.log(`   PUT  /subjects/:id/user-tags/:tagName`);
+  console.log(`   DELETE /subjects/:id/user-tags/:tagName`);
   console.log(`   GET  /questions/random?subjectId=&difficulty=`);
+  console.log(`   POST /questions/random-list`);
+  console.log(`   POST /questions/list`);
   console.log(`   POST /user-actions`);
   console.log(`   GET  /user-actions/stats?userId=`);
 });

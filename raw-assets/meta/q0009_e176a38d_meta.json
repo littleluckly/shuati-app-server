@@ -1,0 +1,22 @@
+{
+  "id": "e176a38d-a0ad-46b9-8584-8f269801008b",
+  "type": "choice",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "router"
+  ],
+  "question_length": 30,
+  "simple_answer_length": 118,
+  "detailed_analysis_length": 98,
+  "created_at": null,
+  "question_markdown": "Vue 路由 hash 与 history 模式的实现原理？",
+  "answer_simple_markdown": "- hash：监听 location.hash + onhashchange 事件。\n- history：基于 HTML5 history.pushState / replaceState + popstate 事件。\n\n---\n\n##",
+  "answer_analysis_markdown": "- hash 模式利用 URL 中 # 后面的变化，不触发服务端请求，兼容性好。\n- history 模式 URL 更干净，需要服务端配置 404 回退到 index.html，否则刷新 404。",
+  "files": {
+    "audio_simple": "q0009_e176a38d_audio_simple.mp3",
+    "audio_question": "q0009_e176a38d_audio_question.mp3",
+    "audio_analysis": "q0009_e176a38d_audio_analysis.mp3",
+    "meta": "q0009_e176a38d_meta.json"
+  }
+}

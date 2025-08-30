@@ -1,0 +1,22 @@
+{
+  "id": "84d6c3ff-3786-4554-84ba-00012764a836",
+  "type": "multi",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "modifiers"
+  ],
+  "question_length": 13,
+  "simple_answer_length": 124,
+  "detailed_analysis_length": 91,
+  "created_at": null,
+  "question_markdown": "列举常用 Vue 修饰符。",
+  "answer_simple_markdown": "- 事件：.stop .prevent .capture .self .once .passive\n- 按键：.enter .tab .esc .space .up .down …\n- 表单：.lazy .number .trim\n\n---\n\n##",
+  "answer_analysis_markdown": "- 事件修饰符简化 DOM 事件处理；\n- 按键修饰符支持键盘、鼠标、系统键；\n- 表单修饰符控制 v-model 行为，如 .lazy 在 change 而非 input 时同步。",
+  "files": {
+    "audio_simple": "q0019_84d6c3ff_audio_simple.mp3",
+    "audio_question": "q0019_84d6c3ff_audio_question.mp3",
+    "audio_analysis": "q0019_84d6c3ff_audio_analysis.mp3",
+    "meta": "q0019_84d6c3ff_meta.json"
+  }
+}

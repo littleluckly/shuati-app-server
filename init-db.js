@@ -1,9 +1,37 @@
 // init-db.js
 const { MongoClient } = require("mongodb");
+const fs = require("fs");
+const path = require("path");
 
 // 👇 修改成你的数据库信息
 const uri = "mongodb://127.0.0.1:27017";
 // 注意：密码中有 @ 要写成 %40
+
+// 读取 meta.json 文件并转换为 question 数据
+function loadQuestionsFromMeta() {
+  const metaDir = path.join(__dirname, "raw-assets/meta");
+  const questions = [];
+
+  // 读取目录下所有 meta.json 文件
+  const files = fs
+    .readdirSync(metaDir)
+    .filter((file) => file.endsWith("_meta.json"));
+
+  for (const file of files) {
+    const filePath = path.join(metaDir, file);
+    const metaData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+
+    // 将 meta 数据转换为 question 格式
+    const question = {
+      ...metaData,
+      // 注意：subjectId 将在插入时设置
+    };
+
+    questions.push(question);
+  }
+
+  return questions;
+}
 
 async function initDB() {
   const client = new MongoClient(uri);
@@ -13,6 +41,12 @@ async function initDB() {
     console.log("✅ 连接 MongoDB 成功！");
 
     const db = client.db("shuati");
+
+    // 清空现有数据（可选）
+    console.log("🧽 清理现有数据...");
+    await db.collection("questions").deleteMany({});
+    await db.collection("subjects").deleteMany({});
+    console.log("✅ 数据清理完成");
 
     // 1. 插入科目
     const subjects = [
@@ -27,6 +61,7 @@ async function initDB() {
           { name: "Vue", type: "framework" },
           { name: "工程化", type: "tooling" },
         ],
+        userTags: [], // 用户自定义标签数组
         difficultyLevels: ["简单", "中等", "困难"],
         isEnabled: true,
         createdAt: new Date(),
@@ -36,30 +71,23 @@ async function initDB() {
     await db.collection("subjects").insertMany(subjects);
     console.log("📌 已插入科目数据");
 
-    // 2. 插入题目（示例）
-    const questions = [
-      {
-        subjectId: subjects[0]._id,
-        title: "请解释闭包的概念",
-        content: "JavaScript 中的闭包是指函数可以访问其外部作用域的变量。",
-        difficulty: "中等",
-        tags: ["JavaScript", "概念"],
-        audio: {
-          question: { default: "" },
-          answerBrief: { default: "" },
-          answerDetailed: { default: "" },
-        },
-        defaultAnswer: {
-          brief: "闭包是函数和其词法环境的组合。",
-          detailed: "详细解释：闭包允许函数记住并访问其外部作用域...",
-        },
-        isEnabled: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-    await db.collection("questions").insertMany(questions);
-    console.log("📌 已插入题目数据");
+    // 2. 从 meta.json 文件中加载题目数据
+    const questionsFromMeta = loadQuestionsFromMeta();
+
+    // 为每个题目添加 subjectId，使用 subjects[0]._id
+    const questions = questionsFromMeta.map((question) => ({
+      ...question,
+      subjectId: subjects[0]._id,
+    }));
+
+    if (questions.length > 0) {
+      await db.collection("questions").insertMany(questions);
+      console.log(
+        `📌 已插入 ${questions.length} 道题目数据（从 meta.json 文件加载）`
+      );
+    } else {
+      console.log("⚠️  未找到 meta.json 文件，没有插入题目数据");
+    }
 
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）
 

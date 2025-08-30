@@ -1,0 +1,22 @@
+{
+  "id": "2cf403a4-1e94-4ea1-a1aa-8239dc3d5d2b",
+  "type": "choice",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "directive"
+  ],
+  "question_length": 18,
+  "simple_answer_length": 33,
+  "detailed_analysis_length": 108,
+  "created_at": null,
+  "question_markdown": "v-if 与 v-show 的区别？",
+  "answer_simple_markdown": "v-if 真正增删 DOM；v-show 仅切换 display。",
+  "answer_analysis_markdown": "- v-if=false 时节点被移除，条件为真时重新创建并插入，切换成本大；适合不常切换场景。\n- v-show=false 时添加 style=\"display:none\"，节点仍在 DOM，适合频繁显示/隐藏。",
+  "files": {
+    "audio_simple": "q0010_2cf403a4_audio_simple.mp3",
+    "audio_question": "q0010_2cf403a4_audio_question.mp3",
+    "audio_analysis": "q0010_2cf403a4_audio_analysis.mp3",
+    "meta": "q0010_2cf403a4_meta.json"
+  }
+}

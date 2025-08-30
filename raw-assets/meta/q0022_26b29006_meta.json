@@ -1,0 +1,22 @@
+{
+  "id": "26b29006-53ea-40ac-b440-af494ae26ab7",
+  "type": "choice",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "key"
+  ],
+  "question_length": 14,
+  "simple_answer_length": 34,
+  "detailed_analysis_length": 75,
+  "created_at": null,
+  "question_markdown": "Key 在列表渲染中的作用？",
+  "answer_simple_markdown": "为节点提供唯一标识，提升 diff 效率，避免就地复用导致状态错乱。",
+  "answer_analysis_markdown": "diff 算法同级比对时，通过 key 判断节点是否可复用，减少 DOM 移动与销毁；无 key 时按顺序就地复用，可能造成表单错位、过渡失效等问题。",
+  "files": {
+    "audio_simple": "q0022_26b29006_audio_simple.mp3",
+    "audio_question": "q0022_26b29006_audio_question.mp3",
+    "audio_analysis": "q0022_26b29006_audio_analysis.mp3",
+    "meta": "q0022_26b29006_meta.json"
+  }
+}

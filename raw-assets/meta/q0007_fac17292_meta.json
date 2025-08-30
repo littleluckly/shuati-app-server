@@ -1,0 +1,22 @@
+{
+  "id": "fac17292-5e10-4948-bd65-c553edf01cb4",
+  "type": "long",
+  "difficulty": "hard",
+  "tags": [
+    "vue",
+    "diff"
+  ],
+  "question_length": 32,
+  "simple_answer_length": 68,
+  "detailed_analysis_length": 177,
+  "created_at": null,
+  "question_markdown": "描述 Vue2 与 Vue3 渲染器 diff 算法的核心思想。",
+  "answer_simple_markdown": "- Vue2：双端比较 + key；O(n)。\n- Vue3：静态提升 + 动态位运算标记 + 最长递增子序列；更快。\n\n---\n\n##",
+  "answer_analysis_markdown": "- Vue2：同层比较，新旧 children 两端向中间遍历，借助 key 复用节点，减少移动次数。\n- Vue3：\n  1. 编译阶段把静态节点提升，diff 只需对比动态节点。\n  2. 运行时利用位运算快速判断 VNode 类型。\n  3. 多子节点 diff 采用“最长递增子序列”算法（动态规划）最小化 DOM 移动，复杂度仍保持 O(n)。",
+  "files": {
+    "audio_simple": "q0007_fac17292_audio_simple.mp3",
+    "audio_question": "q0007_fac17292_audio_question.mp3",
+    "audio_analysis": "q0007_fac17292_audio_analysis.mp3",
+    "meta": "q0007_fac17292_meta.json"
+  }
+}

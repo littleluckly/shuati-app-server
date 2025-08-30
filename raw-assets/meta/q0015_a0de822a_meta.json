@@ -1,0 +1,22 @@
+{
+  "id": "a0de822a-56e7-46f2-97ee-6b8b39e559c1",
+  "type": "long",
+  "difficulty": "hard",
+  "tags": [
+    "vue",
+    "computed"
+  ],
+  "question_length": 19,
+  "simple_answer_length": 50,
+  "detailed_analysis_length": 192,
+  "created_at": null,
+  "question_markdown": "Vue computed 的实现原理？",
+  "answer_simple_markdown": "每个计算属性创建 lazy Watcher，依赖收集后缓存值，通过 dirty 标记实现按需重计算。",
+  "answer_analysis_markdown": "- 初始化时遍历 computed 属性，生成带有 lazy=true 的 Watcher，保存 value 与 dirty。\n- 首次读取时若 dirty 为 true 则求值并缓存，随后 dirty=false。\n- 依赖项变化时仅把 dirty 置 true，等到下次读取或组件重新渲染时再计算。\n- 既收集计算属性的 Watcher，也收集渲染 Watcher，确保视图同步。",
+  "files": {
+    "audio_simple": "q0015_a0de822a_audio_simple.mp3",
+    "audio_question": "q0015_a0de822a_audio_question.mp3",
+    "audio_analysis": "q0015_a0de822a_audio_analysis.mp3",
+    "meta": "q0015_a0de822a_meta.json"
+  }
+}

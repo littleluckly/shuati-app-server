@@ -1,0 +1,22 @@
+{
+  "id": "2a0da4c9-0eeb-4c9b-bc0a-ac1493beba9d",
+  "type": "short",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "ref"
+  ],
+  "question_length": 8,
+  "simple_answer_length": 22,
+  "detailed_analysis_length": 59,
+  "created_at": null,
+  "question_markdown": "ref 的作用？",
+  "answer_simple_markdown": "注册 DOM 或组件引用，方便父级直接访问。",
+  "answer_analysis_markdown": "- 在普通元素上 ref 获取原生 DOM；\n- 在组件上 ref 获取组件实例，可直接调用内部方法或访问 data。",
+  "files": {
+    "audio_simple": "q0024_2a0da4c9_audio_simple.mp3",
+    "audio_question": "q0024_2a0da4c9_audio_question.mp3",
+    "audio_analysis": "q0024_2a0da4c9_audio_analysis.mp3",
+    "meta": "q0024_2a0da4c9_meta.json"
+  }
+}

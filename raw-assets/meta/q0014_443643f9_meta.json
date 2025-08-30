@@ -1,0 +1,22 @@
+{
+  "id": "443643f9-7e3e-48ce-b7cf-3a90e3662e13",
+  "type": "short",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "data"
+  ],
+  "question_length": 20,
+  "simple_answer_length": 28,
+  "detailed_analysis_length": 57,
+  "created_at": null,
+  "question_markdown": "为什么组件的 data 必须是一个函数？",
+  "answer_simple_markdown": "保证每个组件实例拥有独立数据，避免引用共享导致状态污染。",
+  "answer_analysis_markdown": "组件复用时返回同一构造函数，若 data 为对象，则所有实例共享同一份引用；使用函数每次返回新对象，确保数据隔离。",
+  "files": {
+    "audio_simple": "q0014_443643f9_audio_simple.mp3",
+    "audio_question": "q0014_443643f9_audio_question.mp3",
+    "audio_analysis": "q0014_443643f9_audio_analysis.mp3",
+    "meta": "q0014_443643f9_meta.json"
+  }
+}

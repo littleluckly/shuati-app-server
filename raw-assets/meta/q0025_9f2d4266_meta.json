@@ -1,0 +1,23 @@
+{
+  "id": "9f2d4266-46cb-457e-b2f8-af2c6b548257",
+  "type": "choice",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "lifecycle",
+    "http"
+  ],
+  "question_length": 19,
+  "simple_answer_length": 29,
+  "detailed_analysis_length": 113,
+  "created_at": null,
+  "question_markdown": "接口请求一般放在哪个生命周期？为什么？",
+  "answer_simple_markdown": "created；此时数据已初始化，SSR 兼容，避免闪屏。",
+  "answer_analysis_markdown": "- created 中 props/data 已可用，能立即发请求，减少首屏等待；\n- SSR 只执行 beforeCreate/created，保证同构代码一致；\n- mounted 请求可能因 DOM 已渲染出现数据闪烁。",
+  "files": {
+    "audio_simple": "q0025_9f2d4266_audio_simple.mp3",
+    "audio_question": "q0025_9f2d4266_audio_question.mp3",
+    "audio_analysis": "q0025_9f2d4266_audio_analysis.mp3",
+    "meta": "q0025_9f2d4266_meta.json"
+  }
+}

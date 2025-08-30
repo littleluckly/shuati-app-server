@@ -1,0 +1,23 @@
+{
+  "id": "860b6f0a-355b-48cf-a729-8bf7e95d0714",
+  "type": "long",
+  "difficulty": "medium",
+  "tags": [
+    "vue",
+    "spa",
+    "first-screen"
+  ],
+  "question_length": 15,
+  "simple_answer_length": 28,
+  "detailed_analysis_length": 152,
+  "created_at": null,
+  "question_markdown": "SPA 如何优化首屏加载速度？",
+  "answer_simple_markdown": "CDN、缓存、懒加载、预渲染、压缩、http2、骨架屏。",
+  "answer_analysis_markdown": "- 请求：第三方库 CDN，减少主包体积。\n- 缓存：强缓存 + 文件指纹；服务端开启 gzip。\n- 协议：HTTP2 多路复用。\n- 代码：路由懒加载、动态组件、Tree-shaking、按需引入 UI 库。\n- 渲染：预渲染 / SSR、骨架屏、PWA。\n- 资源：图片懒加载、svg 图标、压缩。",
+  "files": {
+    "audio_simple": "q0021_860b6f0a_audio_simple.mp3",
+    "audio_question": "q0021_860b6f0a_audio_question.mp3",
+    "audio_analysis": "q0021_860b6f0a_audio_analysis.mp3",
+    "meta": "q0021_860b6f0a_meta.json"
+  }
+}

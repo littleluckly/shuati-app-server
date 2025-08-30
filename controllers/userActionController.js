@@ -5,7 +5,7 @@ const ApiResponse = require("../utils/ApiResponse");
 // POST /user-actions
 exports.recordUserAction = async (req, res, next) => {
   const { userId = "guest", questionId, action } = req.body;
-  const validActions = ["practiced", "marked", "wrong"];
+  const validActions = ["favorited", "deleted"];
 
   if (!questionId || !action) {
     return res.status(400).json(ApiResponse.error("缺少必要参数"));
@@ -45,15 +45,11 @@ exports.getUserStats = async (req, res, next) => {
       ])
       .toArray();
 
-    const result = { practiced: 0, marked: 0, wrong: 0, total: 0 };
+    const result = { favorited: 0, deleted: 0, total: 0 };
     stats.forEach((item) => {
       result[item._id] = item.count;
       result.total += item.count;
     });
-    result.accuracy =
-      result.practiced > 0
-        ? (result.practiced - result.wrong) / result.practiced
-        : 0;
 
     res.json(ApiResponse.success(result));
   } catch (err) {

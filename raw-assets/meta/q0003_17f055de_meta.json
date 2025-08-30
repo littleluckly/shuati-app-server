@@ -1,0 +1,22 @@
+{
+  "id": "17f055de-3f14-4ef1-bf37-84f1b92b18f4",
+  "type": "choice",
+  "difficulty": "medium",
+  "tags": [
+    "vue",
+    "version"
+  ],
+  "question_length": 23,
+  "simple_answer_length": 55,
+  "detailed_analysis_length": 352,
+  "created_at": null,
+  "question_markdown": "Vue3 相对于 Vue2 的主要区别是什么？",
+  "answer_simple_markdown": "TS 重写、Composition API、Proxy 响应式、编译优化、多根节点、生命周期调整、打包瘦身等。",
+  "answer_analysis_markdown": "- 源码全部用 TypeScript 重写。\n- 新增 Composition API（setup），逻辑复用更灵活；Options API 仍可用。\n- 响应式系统升级为 Proxy，解决数组与动态属性的监听问题。\n- 编译阶段标记并提升所有静态节点，diff 时只对比动态节点，性能提升。\n- 移除不常用 API（filter、inline-template）；Tree-shaking 更彻底，包更小。\n- 生命周期：setup 合并 beforeCreate & created；新增 onBeforeUnmount、onUnmounted 等。\n- template 支持多个根标签。\n- Vuex 改为 createStore，Router 需使用 useRouter / useRoute。",
+  "files": {
+    "audio_simple": "q0003_17f055de_audio_simple.mp3",
+    "audio_question": "q0003_17f055de_audio_question.mp3",
+    "audio_analysis": "q0003_17f055de_audio_analysis.mp3",
+    "meta": "q0003_17f055de_meta.json"
+  }
+}

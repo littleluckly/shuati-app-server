@@ -1,0 +1,22 @@
+{
+  "id": "b9774e38-c9cb-43e0-b7fd-ecf51925cfab",
+  "type": "short",
+  "difficulty": "easy",
+  "tags": [
+    "vue",
+    "mvvm"
+  ],
+  "question_length": 12,
+  "simple_answer_length": 57,
+  "detailed_analysis_length": 116,
+  "created_at": null,
+  "question_markdown": "简述 MVVM 的理解。",
+  "answer_simple_markdown": "Model-View-ViewModel，数据(Model)与视图(View)通过 ViewModel 双向绑定。",
+  "answer_analysis_markdown": "Model 负责数据，View 负责 UI，ViewModel 作为桥梁：\n\n- 自动把 Model 数据渲染到 View；\n- 监听 View 的用户输入并更新 Model。  \n  开发者只需关注数据逻辑，无需手动操作 DOM。",
+  "files": {
+    "audio_simple": "q0004_b9774e38_audio_simple.mp3",
+    "audio_question": "q0004_b9774e38_audio_question.mp3",
+    "audio_analysis": "q0004_b9774e38_audio_analysis.mp3",
+    "meta": "q0004_b9774e38_meta.json"
+  }
+}

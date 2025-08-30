@@ -26,3 +26,191 @@ exports.getRandomQuestion = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /questions/list - 获取过滤的题目列表
+exports.getFilteredQuestionList = async (req, res, next) => {
+  const { subjectId, difficulty, tags = [], page = 1, limit = 20 } = req.body;
+
+  try {
+    const db = await connectDB();
+    const filter = {};
+
+    // 构建过滤条件
+    if (subjectId) {
+      filter.subjectId = new require("mongodb").ObjectId(subjectId);
+    }
+
+    if (difficulty) {
+      if (Array.isArray(difficulty)) {
+        // 如果是数组，使用 $in 操作符
+        filter.difficulty = { $in: difficulty };
+      } else {
+        // 如果是单个值，直接匹配
+        filter.difficulty = difficulty;
+      }
+    }
+
+    // 支持多个标签过滤
+    if (tags && tags.length > 0) {
+      filter.tags = { $in: tags };
+    }
+
+    // 计算分页参数
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // 获取总数
+    const total = await db.collection("questions").countDocuments(filter);
+
+    // 获取分页数据
+    const questions = await db
+      .collection("questions")
+      .find(filter)
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 }) // 按创建时间倒序
+      .toArray();
+
+    const result = {
+      questions,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasNext: pageNum * limitNum < total,
+        hasPrev: pageNum > 1,
+      },
+      filters: {
+        subjectId,
+        difficulty,
+        tags,
+      },
+    };
+
+    res.json(ApiResponse.success(result));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /questions/random-list - 随机获取某个科目下的题目列表
+exports.getRandomQuestionList = async (req, res, next) => {
+  const { subjectId, total = 10, difficultyConfig, tagConfig } = req.body;
+
+  // 默认难度分布配置
+  const defaultDifficultyConfig = {
+    easy: 0.4, // 40% 简单
+    medium: 0.4, // 40% 中等
+    hard: 0.2, // 20% 困难
+  };
+
+  try {
+    // 使用请求体中的难度分布配置或默认配置
+    const finalDifficultyConfig = difficultyConfig || defaultDifficultyConfig;
+
+    const db = await connectDB();
+    const totalNum = parseInt(total);
+    let allQuestions = [];
+
+    if (!subjectId) {
+      return res.status(400).json(ApiResponse.error("缺少科目 ID 参数"));
+    }
+
+    const baseFilter = {
+      subjectId: new require("mongodb").ObjectId(subjectId),
+    };
+
+    // 按难度分布获取题目
+    for (const [difficulty, ratio] of Object.entries(finalDifficultyConfig)) {
+      const count = Math.round(totalNum * ratio);
+      if (count > 0) {
+        const filter = { ...baseFilter, difficulty };
+
+        const questions = await db
+          .collection("questions")
+          .aggregate([{ $match: filter }, { $sample: { size: count } }])
+          .toArray();
+
+        allQuestions = allQuestions.concat(questions);
+      }
+    }
+
+    // 如果有标签配置，进一步筛选
+    if (tagConfig && Object.keys(tagConfig).length > 0) {
+      let tagQuestions = [];
+
+      for (const [tag, count] of Object.entries(tagConfig)) {
+        const filter = {
+          ...baseFilter,
+          tags: { $in: [tag] },
+        };
+
+        const questions = await db
+          .collection("questions")
+          .aggregate([
+            { $match: filter },
+            { $sample: { size: parseInt(count) } },
+          ])
+          .toArray();
+
+        tagQuestions = tagQuestions.concat(questions);
+      }
+
+      // 合并结果，去重
+      const questionIds = new Set();
+      const combinedQuestions = [];
+
+      [...allQuestions, ...tagQuestions].forEach((question) => {
+        if (!questionIds.has(question._id.toString())) {
+          questionIds.add(question._id.toString());
+          combinedQuestions.push(question);
+        }
+      });
+
+      allQuestions = combinedQuestions;
+    }
+
+    // 如果题目数不够，随机补充
+    if (allQuestions.length < totalNum) {
+      const existingIds = allQuestions.map((q) => q._id);
+      const additionalCount = totalNum - allQuestions.length;
+
+      const additionalQuestions = await db
+        .collection("questions")
+        .aggregate([
+          {
+            $match: {
+              ...baseFilter,
+              _id: { $nin: existingIds },
+            },
+          },
+          { $sample: { size: additionalCount } },
+        ])
+        .toArray();
+
+      allQuestions = allQuestions.concat(additionalQuestions);
+    }
+
+    // 随机打乱顺序
+    allQuestions = allQuestions.sort(() => Math.random() - 0.5);
+
+    // 截取指定数量
+    allQuestions = allQuestions.slice(0, totalNum);
+
+    const result = {
+      questions: allQuestions,
+      total: allQuestions.length,
+      config: {
+        requestedTotal: totalNum,
+        difficultyConfig: finalDifficultyConfig,
+        tagConfig,
+      },
+    };
+
+    res.json(ApiResponse.success(result));
+  } catch (err) {
+    next(err);
+  }
+};
