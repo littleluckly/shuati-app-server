@@ -1,6 +1,7 @@
 // controllers/userActionController.js
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
+const { ObjectId } = require("mongodb");
 
 // POST /user-actions
 exports.recordUserAction = async (req, res, next) => {
@@ -17,7 +18,7 @@ exports.recordUserAction = async (req, res, next) => {
 
   const actionDoc = {
     userId,
-    questionId: new require("mongodb").ObjectId(questionId),
+    questionId: new ObjectId(questionId),
     action,
     createdAt: new Date(),
   };

@@ -30,7 +30,7 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`   GET  /subjects`);
   console.log(`   GET  /subjects/all`);
   console.log(`   GET  /subjects/:id`);
-  console.log(`   GET  /subjects/:id/tags`);
+  console.log(`   GET  /subjects/:id/tags-count`);
   console.log(`   POST /subjects/:id/user-tags`);
   console.log(`   PUT  /subjects/:id/user-tags/:tagName`);
   console.log(`   DELETE /subjects/:id/user-tags/:tagName`);

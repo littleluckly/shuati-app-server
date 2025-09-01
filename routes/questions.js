@@ -5,10 +5,12 @@ const {
   getRandomQuestion,
   getRandomQuestionList,
   getFilteredQuestionList,
+  getQuestionById,
 } = require("../controllers/questionController");
 
 router.get("/random", getRandomQuestion);
 router.post("/random-list", getRandomQuestionList);
 router.post("/list", getFilteredQuestionList);
+router.get("/:id", getQuestionById);
 
 module.exports = router;

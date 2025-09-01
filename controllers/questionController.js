@@ -1,4 +1,5 @@
 // controllers/questionController.js
+const { ObjectId } = require("mongodb");
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 
@@ -7,7 +8,7 @@ exports.getRandomQuestion = async (req, res, next) => {
   const { subjectId, difficulty } = req.query;
   const filter = { isEnabled: true };
 
-  if (subjectId) filter.subjectId = new require("mongodb").ObjectId(subjectId);
+  if (subjectId) filter.subjectId = new ObjectId(subjectId);
   if (difficulty) filter.difficulty = difficulty;
 
   try {
@@ -37,7 +38,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 
     // 构建过滤条件
     if (subjectId) {
-      filter.subjectId = new require("mongodb").ObjectId(subjectId);
+      filter.subjectId = new ObjectId(subjectId);
     }
 
     if (difficulty) {
@@ -63,6 +64,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     // 获取总数
     const total = await db.collection("questions").countDocuments(filter);
 
+    console.log(pageNum, "pageNum");
     // 获取分页数据
     const questions = await db
       .collection("questions")
@@ -119,7 +121,7 @@ exports.getRandomQuestionList = async (req, res, next) => {
     }
 
     const baseFilter = {
-      subjectId: new require("mongodb").ObjectId(subjectId),
+      subjectId: new ObjectId(subjectId),
     };
 
     // 按难度分布获取题目
@@ -210,6 +212,33 @@ exports.getRandomQuestionList = async (req, res, next) => {
     };
 
     res.json(ApiResponse.success(result));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /questions/:id - 根据ID获取题目详情
+exports.getQuestionById = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const db = await connectDB();
+    let question;
+
+    // 首先尝试使用ObjectId查询
+    try {
+      const objectId = new ObjectId(id);
+      question = await db.collection("questions").findOne({ _id: objectId });
+    } catch (objectIdError) {
+      // 如果ObjectId查询失败，尝试使用自定义id字段查询
+      question = await db.collection("questions").findOne({ id: id });
+    }
+
+    if (!question) {
+      return res.status(404).json(ApiResponse.error("题目不存在"));
+    }
+
+    res.json(ApiResponse.success(question));
   } catch (err) {
     next(err);
   }

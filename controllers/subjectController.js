@@ -1,6 +1,7 @@
 // controllers/subjectController.js
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
+const { ObjectId } = require("mongodb");
 
 // GET /subjects
 exports.getSubjects = async (req, res, next) => {
@@ -71,7 +72,7 @@ exports.getSubjectById = async (req, res, next) => {
     const db = await connectDB();
     const subject = await db
       .collection("subjects")
-      .findOne({ _id: new require("mongodb").ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) });
     if (!subject) {
       return res.status(404).json(ApiResponse.error("科目不存在"));
     }
@@ -81,8 +82,8 @@ exports.getSubjectById = async (req, res, next) => {
   }
 };
 
-// GET /subjects/:id/tags - 根据科目 ID 获取所有标签
-exports.getTagsBySubjectId = async (req, res, next) => {
+// GET /subjects/:id/tags-count - 根据科目 ID 获取所有标签计数
+exports.getTagCountBySubjectId = async (req, res, next) => {
   const { id } = req.params;
   try {
     const db = await connectDB();
@@ -90,7 +91,7 @@ exports.getTagsBySubjectId = async (req, res, next) => {
     // 验证科目是否存在
     const subject = await db
       .collection("subjects")
-      .findOne({ _id: new require("mongodb").ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
       return res.status(404).json(ApiResponse.error("科目不存在"));
@@ -100,7 +101,7 @@ exports.getTagsBySubjectId = async (req, res, next) => {
     const tagStats = await db
       .collection("questions")
       .aggregate([
-        { $match: { subjectId: new require("mongodb").ObjectId(id) } },
+        { $match: { subjectId: new ObjectId(id) } },
         { $unwind: { path: "$tags", preserveNullAndEmptyArrays: false } },
         {
           $group: {
@@ -138,7 +139,7 @@ exports.addUserTag = async (req, res, next) => {
     // 验证科目是否存在
     const subject = await db
       .collection("subjects")
-      .findOne({ _id: new require("mongodb").ObjectId(id) });
+      .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
       return res.status(404).json(ApiResponse.error("科目不存在"));
@@ -146,7 +147,7 @@ exports.addUserTag = async (req, res, next) => {
 
     // 添加用户标签到 userTags 数组（如果不存在）
     const result = await db.collection("subjects").updateOne(
-      { _id: new require("mongodb").ObjectId(id) },
+      { _id: new ObjectId(id) },
       {
         $addToSet: {
           userTags: { name, type: type || "custom" },
@@ -167,6 +168,30 @@ exports.addUserTag = async (req, res, next) => {
   }
 };
 
+// GET /subjects/:id/all-tags - 根据科目 ID 获取所有标签（不带统计）
+exports.getAllTagsBySubjectId = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const db = await connectDB();
+
+    // 验证科目是否存在
+    const subject = await db
+      .collection("subjects")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!subject) {
+      return res.status(404).json(ApiResponse.error("科目不存在"));
+    }
+
+    // 返回该科目的所有标签（包含name和type字段）
+    const tags = subject.tags || [];
+
+    res.json(ApiResponse.success(tags));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // PUT /subjects/:id/user-tags/:tagName - 修改用户自定义标签
 exports.updateUserTag = async (req, res, next) => {
   const { id, tagName } = req.params;
@@ -181,7 +206,7 @@ exports.updateUserTag = async (req, res, next) => {
 
     // 验证科目是否存在
     const subject = await db.collection("subjects").findOne({
-      _id: new require("mongodb").ObjectId(id),
+      _id: new ObjectId(id),
     });
 
     if (!subject) {
@@ -199,7 +224,7 @@ exports.updateUserTag = async (req, res, next) => {
     // 更新 userTags 数组中的标签
     const result = await db.collection("subjects").updateOne(
       {
-        _id: new require("mongodb").ObjectId(id),
+        _id: new ObjectId(id),
         "userTags.name": tagName,
       },
       {
@@ -218,7 +243,7 @@ exports.updateUserTag = async (req, res, next) => {
     // 同时更新该科目下所有题目中的对应标签
     await db.collection("questions").updateMany(
       {
-        subjectId: new require("mongodb").ObjectId(id),
+        subjectId: new ObjectId(id),
         tags: tagName,
       },
       {
@@ -243,7 +268,7 @@ exports.deleteUserTag = async (req, res, next) => {
 
     // 验证科目是否存在
     const subject = await db.collection("subjects").findOne({
-      _id: new require("mongodb").ObjectId(id),
+      _id: new ObjectId(id),
     });
 
     if (!subject) {
@@ -260,7 +285,7 @@ exports.deleteUserTag = async (req, res, next) => {
 
     // 从 userTags 数组中移除标签
     const result = await db.collection("subjects").updateOne(
-      { _id: new require("mongodb").ObjectId(id) },
+      { _id: new ObjectId(id) },
       {
         $pull: {
           userTags: { name: tagName },
@@ -278,7 +303,7 @@ exports.deleteUserTag = async (req, res, next) => {
     // 同时从该科目下所有题目中移除对应标签
     await db.collection("questions").updateMany(
       {
-        subjectId: new require("mongodb").ObjectId(id),
+        subjectId: new ObjectId(id),
         tags: tagName,
       },
       {
@@ -289,6 +314,67 @@ exports.deleteUserTag = async (req, res, next) => {
     );
 
     res.json(ApiResponse.success(null, "标签删除成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /subjects/:id/difficulty-levels - 根据科目 ID 获取困难程度
+exports.getDifficultyLevelsBySubjectId = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const db = await connectDB();
+
+    // 验证科目是否存在
+    const subject = await db
+      .collection("subjects")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!subject) {
+      return res.status(404).json(ApiResponse.error("科目不存在"));
+    }
+
+    // 获取该科目下所有题目的难度统计
+    const difficultyStats = await db
+      .collection("questions")
+      .aggregate([
+        { $match: { subjectId: new ObjectId(id) } },
+        {
+          $group: {
+            _id: "$difficulty",
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+      ])
+      .toArray();
+
+    const difficultyLevels = difficultyStats.map((level) => ({
+      level: level._id,
+      value: level.count,
+    }));
+
+    res.json(ApiResponse.success(difficultyLevels));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /subjects/:id/difficulty-options - 根据科目 ID 获取困难程度选项
+exports.getDifficultyOptionsBySubjectId = async (req, res, next) => {
+  const { id } = req.params;
+  try {
+    const db = await connectDB();
+
+    // 验证科目是否存在
+    const subject = await db
+      .collection("subjects")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!subject) {
+      return res.status(404).json(ApiResponse.error("科目不存在"));
+    }
+    res.json(ApiResponse.success(subject.difficultyLevels));
   } catch (err) {
     next(err);
   }

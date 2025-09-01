@@ -178,9 +178,9 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
 }
 ```
 
-### 1.4 根据科目 ID 获取所有标签
+### 1.4 根据科目 ID 获取所有标签计数
 
-**接口地址**: `GET /subjects/:id/tags`
+**接口地址**: `GET /subjects/:id/tags-count`
 
 **接口描述**: 根据科目 ID 获取该科目下所有题目的标签及其数量统计
 
@@ -232,7 +232,61 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags
 }
 ```
 
-### 1.5 添加用户自定义标签
+### 1.5 根据科目 ID 获取所有标签
+
+**接口地址**: `GET /subjects/:id/all-tags`
+
+**接口描述**: 根据科目 ID 获取该科目下所有题目的标签，不包含数量统计
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| id | string | path | 是 | 科目的 ObjectId |
+
+**请求示例**:
+
+```bash
+GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
+```
+
+**响应示例**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "JavaScript",
+      "value": "javascript"
+    },
+    {
+      "name": "CSS",
+      "value": "css"
+    },
+    {
+      "name": "React",
+      "value": "react"
+    },
+    {
+      "name": "Vue",
+      "value": "vue"
+    }
+  ],
+  "message": "操作成功"
+}
+```
+
+**错误响应**:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "科目不存在"
+}
+```
+
+### 1.6 添加用户自定义标签
 
 **接口地址**: `POST /subjects/:id/user-tags`
 
@@ -1052,7 +1106,12 @@ curl -X GET "http://localhost:3000/user-actions/stats?userId=user123"
 
 ## 9. 更新日志
 
-### v1.4.0 (当前版本)
+### v1.5.0 (2024-05-22)
+
+- 修改根据科目 ID 获取标签接口名称为 getTagCountBySubjectId
+- 新增根据科目 ID 获取所有标签接口（不带统计）
+
+### v1.4.0 (2024-05-21)
 
 - 更新用户行为类型为英文：favorited、deleted
 - 更新相关文档和示例代码
@@ -1068,7 +1127,7 @@ curl -X GET "http://localhost:3000/user-actions/stats?userId=user123"
 ### v1.1.0
 
 - 新增获取所有科目详细信息 API (`GET /subjects/all`)
-- 新增根据科目 ID 获取标签 API (`GET /subjects/:id/tags`)
+- 新增根据科目 ID 获取标签 API (`GET /subjects/:id/tags-count`)
 - 新增随机获取题目列表 API (`POST /questions/random-list`)
 - 支持自定义难度分布配置
 - 支持按标签过滤题目
@@ -1081,3 +1140,103 @@ curl -X GET "http://localhost:3000/user-actions/stats?userId=user123"
 - 实现用户行为记录 API
 - 实现用户统计数据 API
 - 支持从 meta.json 文件批量导入题目数据
+
+### 1.8 根据科目 ID 获取困难程度统计
+
+**接口地址**: `GET /subjects/:id/difficulty-levels`
+
+**接口描述**: 根据科目 ID 获取该科目下所有题目的难度统计信息
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| id | string | path | 是 | 科目的 ObjectId |
+
+**请求示例**:
+
+```bash
+GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
+```
+
+**响应示例**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "level": "简单",
+      "value": 10
+    },
+    {
+      "level": "中等",
+      "value": 10
+    },
+    {
+      "level": "困难",
+      "value": 5
+    }
+  ],
+  "message": "操作成功"
+}
+```
+
+**错误响应**:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "科目不存在"
+}
+```
+
+### 1.10 根据科目 ID 获取困难程度选项
+
+**接口地址**: `GET /subjects/:id/difficulty-options`
+
+**接口描述**: 根据科目 ID 获取该科目下所有题目的难度选项列表
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| id | string | path | 是 | 科目的 ObjectId |
+
+**请求示例**:
+
+```bash
+GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-options
+```
+
+**响应示例**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "简单",
+      "value": "easy"
+    },
+    {
+      "name": "中等",
+      "value": "medium"
+    },
+    {
+      "name": "困难",
+      "value": "hard"
+    }
+  ],
+  "message": "操作成功"
+}
+```
+
+**错误响应**:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "科目不存在"
+}
+```
