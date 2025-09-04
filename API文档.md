@@ -37,13 +37,13 @@
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": [
@@ -83,13 +83,13 @@ GET http://localhost:3000/subjects
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/all
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": [
@@ -101,9 +101,6 @@ GET http://localhost:3000/subjects/all
       "tags": [
         { "name": "JavaScript", "type": "language" },
         { "name": "CSS", "type": "style" },
-        { "name": "React", "type": "framework" },
-        { "name": "Vue", "type": "framework" },
-        { "name": "工程化", "type": "tooling" }
       ],
       "userTags": [
         { "name": "面试重点", "type": "priority" },
@@ -140,13 +137,13 @@ GET http://localhost:3000/subjects/all
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": {
@@ -170,7 +167,7 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -191,13 +188,13 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": [
@@ -224,7 +221,7 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -245,13 +242,13 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": [
@@ -278,7 +275,7 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -301,7 +298,7 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
 
 **请求示例**:
 
-```bash
+```
 POST http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/user-tags
 Content-Type: application/json
 
@@ -313,7 +310,7 @@ Content-Type: application/json
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": null,
@@ -323,7 +320,7 @@ Content-Type: application/json
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -347,7 +344,7 @@ Content-Type: application/json
 
 **请求示例**:
 
-```bash
+```
 PUT http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/user-tags/面试重点
 Content-Type: application/json
 
@@ -359,7 +356,7 @@ Content-Type: application/json
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": null,
@@ -369,7 +366,7 @@ Content-Type: application/json
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -391,13 +388,13 @@ Content-Type: application/json
 
 **请求示例**:
 
-```bash
+```
 DELETE http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/user-tags/面试重点
 ```
 
 **响应示例**:
 
-```json
+```
 {
   "success": true,
   "data": null,
@@ -407,7 +404,7 @@ DELETE http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/user-tags/面试�
 
 **错误响应**:
 
-```json
+```
 {
   "success": false,
   "data": null,
@@ -846,6 +843,199 @@ GET http://localhost:3000/user-actions/stats?userId=user123
 
 ---
 
+### 3.3 重置用户删除的题目记录 (开发专用)
+
+**接口地址**: `POST /user-actions/reset-deleted`
+
+**接口描述**: 重置指定用户删除的题目记录，仅在开发环境中可用
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| userId | string | body | 否 | 用户 ID，默认为 "guest" |
+
+**请求示例**:
+
+```
+# 重置默认用户删除的题目记录
+POST http://localhost:3000/user-actions/reset-deleted
+Content-Type: application/json
+
+{}
+
+# 重置指定用户删除的题目记录
+POST http://localhost:3000/user-actions/reset-deleted
+Content-Type: application/json
+
+{
+  "userId": "user123"
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": null,
+  "message": "成功重置 5 条删除记录"
+}
+```
+
+**错误响应**:
+
+```
+{
+  "success": false,
+  "data": null,
+  "message": "Forbidden: Development endpoint only"
+}
+```
+
+---
+
+### 3.4 恢复用户删除的题目
+
+**接口地址**: `POST /user-actions/undelete`
+
+**接口描述**: 恢复用户删除的题目，支持单个或批量恢复
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| userId | string | body | 否 | 用户 ID，默认为 "guest" |
+| questionIds | string/array | body | 是 | 要恢复的题目 ID 或 ID 数组 |
+
+**请求示例**:
+
+```
+# 恢复单个题目
+POST http://localhost:3000/user-actions/undelete
+Content-Type: application/json
+
+{
+  "userId": "user123",
+  "questionIds": "64f1a2b3c4d5e6f789012346"
+}
+
+# 批量恢复题目
+POST http://localhost:3000/user-actions/undelete
+Content-Type: application/json
+
+{
+  "userId": "user123",
+  "questionIds": [
+    "64f1a2b3c4d5e6f789012346",
+    "64f1a2b3c4d5e6f789012347",
+    "64f1a2b3c4d5e6f789012348"
+  ]
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": null,
+  "message": "成功恢复 3 道题目"
+}
+```
+
+**错误响应**:
+
+```
+{
+  "success": false,
+  "data": null,
+  "message": "缺少必要参数: questionIds"
+}
+```
+
+---
+
+### 3.5 获取用户删除的题目列表
+
+**接口地址**: `POST /user-actions/deleted-questions`
+
+**接口描述**: 获取用户删除的题目列表，支持分页
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| userId | string | body | 否 | 用户 ID，默认为 "guest" |
+| page | number | body | 否 | 页码，默认 1 |
+| limit | number | body | 否 | 每页数量，默认 20 |
+
+**请求示例**:
+
+```
+# 获取默认用户删除的题目列表
+POST http://localhost:3000/user-actions/deleted-questions
+Content-Type: application/json
+
+{}
+
+# 获取指定用户删除的题目列表
+POST http://localhost:3000/user-actions/deleted-questions
+Content-Type: application/json
+
+{
+  "userId": "user123",
+  "page": 1,
+  "limit": 10
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": {
+    "questions": [
+      {
+        "_id": "64f1a2b3c4d5e6f789012349",
+        "userId": "user123",
+        "questionId": "64f1a2b3c4d5e6f789012346",
+        "action": "deleted",
+        "createdAt": "2023-09-01T10:00:00.000Z",
+        "questionDetails": {
+          "_id": "64f1a2b3c4d5e6f789012346",
+          "id": "285acd89-b79b-49e6-8425-5d60d5101233",
+          "type": "choice",
+          "difficulty": "easy",
+          "tags": ["vue", "lifecycle"],
+          "question_markdown": "Vue 2.x 生命周期有哪些？分别做了什么？",
+          "answer_simple_markdown": "beforeCreate → created → beforeMount → mounted...",
+          "subjectId": "64f1a2b3c4d5e6f789012345"
+        }
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 15,
+      "totalPages": 1,
+      "hasNext": false,
+      "hasPrev": false
+    }
+  },
+  "message": "操作成功"
+}
+```
+
+**分页字段说明**:
+
+- `page`: 当前页码
+- `limit`: 每页数量
+- `total`: 总题目数
+- `totalPages`: 总页数
+- `hasNext`: 是否有下一页
+- `hasPrev`: 是否有上一页
+
+---
+
 ## 4. 状态码说明
 
 | HTTP 状态码 | 说明           |
@@ -1160,13 +1350,13 @@ curl -X GET "http://localhost:3000/user-actions/stats?userId=user123"
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
 ```
 
 **响应示例**:
 
-``json
+```
 {
 "success": true,
 "data": [
@@ -1190,7 +1380,7 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
 
 **错误响应**:
 
-``json
+```
 {
   "success": false,
   "data": null,
@@ -1211,13 +1401,13 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
 
 **请求示例**:
 
-```bash
+```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-options
 ```
 
 **响应示例**:
 
-``json
+```
 {
 "success": true,
 "data": [
@@ -1235,16 +1425,5 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-options
 }
 ],
 "message": "操作成功"
-}
-
-```
-
-**错误响应**:
-
-``json
-{
-  "success": false,
-  "data": null,
-  "message": "科目不存在"
 }
 ```
