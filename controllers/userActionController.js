@@ -4,6 +4,12 @@ const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
 
 // POST /user-actions
+// 接口用途：记录用户对题目的操作行为（收藏/删除）
+// 使用场景：当用户收藏或删除题目时调用此接口
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+// - questionId: 题目ID，必填
+// - action: 操作类型，可选值为"favorited"（收藏）或"deleted"（删除）
 exports.recordUserAction = async (req, res, next) => {
   const { userId = "guest", questionId, action } = req.body;
   const validActions = ["favorited", "deleted"];
@@ -33,6 +39,10 @@ exports.recordUserAction = async (req, res, next) => {
 };
 
 // GET /user-actions/stats
+// 接口用途：获取用户的操作统计信息
+// 使用场景：在用户个人中心或统计页面显示用户收藏和删除的题目数量
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
 exports.getUserStats = async (req, res, next) => {
   const { userId = "guest" } = req.query;
 
@@ -59,6 +69,10 @@ exports.getUserStats = async (req, res, next) => {
 };
 
 // POST /user-actions/reset-deleted (Development only)
+// 接口用途：重置用户删除的题目记录（仅开发环境可用）
+// 使用场景：开发和测试时清空用户的删除记录，方便测试
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
 exports.resetDeletedQuestions = async (req, res, next) => {
   const { userId = "guest" } = req.body;
 
@@ -87,6 +101,11 @@ exports.resetDeletedQuestions = async (req, res, next) => {
 };
 
 // POST /user-actions/undelete
+// 接口用途：恢复用户删除的题目
+// 使用场景：当用户想要恢复之前删除的题目时使用，支持单个或批量恢复
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+// - questionIds: 要恢复的题目ID或ID数组，必填
 exports.undeleteQuestions = async (req, res, next) => {
   const { userId = "guest", questionIds } = req.body;
 
@@ -120,6 +139,12 @@ exports.undeleteQuestions = async (req, res, next) => {
 };
 
 // POST /user-actions/deleted-questions
+// 接口用途：获取用户删除的题目列表，支持分页
+// 使用场景：在用户"已删除"页面展示用户删除的题目列表
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+// - page: 页码，默认为1
+// - limit: 每页数量，默认为20
 exports.getDeletedQuestions = async (req, res, next) => {
   const { userId = "guest", page = 1, limit = 20 } = req.body;
 

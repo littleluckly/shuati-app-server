@@ -4,6 +4,11 @@ const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 
 // GET /questions/random
+// 接口用途：随机获取一道题目
+// 使用场景：在练习模式中随机选择题目进行练习
+// 参数说明：
+// - subjectId: 科目ID，可选，查询参数
+// - difficulty: 难度等级，可选，查询参数
 exports.getRandomQuestion = async (req, res, next) => {
   const { subjectId, difficulty } = req.query;
   const filter = { isEnabled: true };
@@ -29,6 +34,15 @@ exports.getRandomQuestion = async (req, res, next) => {
 };
 
 // POST /questions/list - 获取过滤的题目列表
+// 接口用途：根据条件过滤获取题目列表，支持分页和排除用户已删除的题目
+// 使用场景：在题目列表页面根据科目、难度、标签等条件筛选题目
+// 参数说明：
+// - subjectId: 科目ID，可选，请求体参数
+// - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
+// - tags: 标签数组，可选，请求体参数
+// - page: 页码，默认为1，请求体参数
+// - limit: 每页数量，默认为20，请求体参数
+// - userId: 用户ID，默认为"guest"，用于过滤用户已删除的题目，请求体参数
 exports.getFilteredQuestionList = async (req, res, next) => {
   const {
     subjectId,
@@ -140,6 +154,13 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 };
 
 // POST /questions/random-list - 随机获取某个科目下的题目列表
+// 接口用途：随机获取指定科目下的题目列表，支持难度分布和标签配置
+// 使用场景：在智能练习模式中根据配置随机生成题目列表
+// 参数说明：
+// - subjectId: 科目ID，必填，请求体参数
+// - total: 题目总数，默认为10，请求体参数
+// - difficultyConfig: 难度分布配置，可选，请求体参数
+// - tagConfig: 标签配置，可选，请求体参数
 exports.getRandomQuestionList = async (req, res, next) => {
   const { subjectId, total = 10, difficultyConfig, tagConfig } = req.body;
 
@@ -260,6 +281,10 @@ exports.getRandomQuestionList = async (req, res, next) => {
 };
 
 // GET /questions/:id - 根据ID获取题目详情
+// 接口用途：根据题目ID获取题目详细信息
+// 使用场景：在题目详情页面展示题目的完整内容
+// 参数说明：
+// - id: 题目ID，路径参数，支持ObjectId或自定义ID
 exports.getQuestionById = async (req, res, next) => {
   const { id } = req.params;
 
