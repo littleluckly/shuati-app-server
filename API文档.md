@@ -624,16 +624,18 @@ Content-Type: application/json
 | tags | array | body | 否 | 标签数组，支持多个标签 |
 | page | number | body | 否 | 页码，默认 1 |
 | limit | number | body | 否 | 每页数量，默认 20 |
+| userId | string | body | 否 | 用户 ID，默认为 "guest"，用于过滤用户已删除的题目 |
 
 **请求示例**:
 
 ```
-# 获取指定科目的所有题目
+# 获取指定科目的所有题目（不包含用户已删除的）
 POST http://localhost:3000/questions/list
 Content-Type: application/json
 
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
+  "userId": "user123",
   "page": 1,
   "limit": 10
 }
@@ -645,6 +647,7 @@ Content-Type: application/json
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
   "difficulty": "medium",
+  "userId": "user123",
   "page": 1,
   "limit": 20
 }
@@ -656,6 +659,7 @@ Content-Type: application/json
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
   "difficulty": ["easy", "medium"],
+  "userId": "user123",
   "page": 1,
   "limit": 20
 }
@@ -667,6 +671,7 @@ Content-Type: application/json
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
   "tags": ["vue", "javascript", "lifecycle"],
+  "userId": "user123",
   "page": 1,
   "limit": 15
 }
@@ -679,6 +684,7 @@ Content-Type: application/json
   "subjectId": "64f1a2b3c4d5e6f789012345",
   "difficulty": ["easy", "medium"],
   "tags": ["vue", "component"],
+  "userId": "user123",
   "page": 2,
   "limit": 10
 }
@@ -1160,30 +1166,31 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
 
 **响应示例**:
 
-```json
+``json
 {
-  "success": true,
-  "data": [
-    {
-      "level": "简单",
-      "value": 10
-    },
-    {
-      "level": "中等",
-      "value": 10
-    },
-    {
-      "level": "困难",
-      "value": 5
-    }
-  ],
-  "message": "操作成功"
+"success": true,
+"data": [
+{
+"level": "简单",
+"value": 10
+},
+{
+"level": "中等",
+"value": 10
+},
+{
+"level": "困难",
+"value": 5
 }
+],
+"message": "操作成功"
+}
+
 ```
 
 **错误响应**:
 
-```json
+``json
 {
   "success": false,
   "data": null,
@@ -1210,30 +1217,31 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-options
 
 **响应示例**:
 
-```json
+``json
 {
-  "success": true,
-  "data": [
-    {
-      "name": "简单",
-      "value": "easy"
-    },
-    {
-      "name": "中等",
-      "value": "medium"
-    },
-    {
-      "name": "困难",
-      "value": "hard"
-    }
-  ],
-  "message": "操作成功"
+"success": true,
+"data": [
+{
+"name": "简单",
+"value": "easy"
+},
+{
+"name": "中等",
+"value": "medium"
+},
+{
+"name": "困难",
+"value": "hard"
 }
+],
+"message": "操作成功"
+}
+
 ```
 
 **错误响应**:
 
-```json
+``json
 {
   "success": false,
   "data": null,

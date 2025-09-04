@@ -119,6 +119,15 @@ async function initDB() {
       .collection("questions")
       .createIndex({ subjectId: 1, difficulty: 1 });
     await db.collection("questions").createIndex({ subjectId: 1, tags: 1 });
+
+    // 为用户行为集合创建索引
+    await db.collection("userActions").createIndex({ userId: 1 });
+    await db.collection("userActions").createIndex({ questionId: 1 });
+    await db.collection("userActions").createIndex({ action: 1 });
+    await db.collection("userActions").createIndex({ userId: 1, action: 1 });
+    await db
+      .collection("userActions")
+      .createIndex({ userId: 1, questionId: 1, action: 1 });
     console.log("✅ 索引创建完成");
 
     console.log("🎉 数据库初始化完成！");

@@ -30,7 +30,14 @@ exports.getRandomQuestion = async (req, res, next) => {
 
 // POST /questions/list - 获取过滤的题目列表
 exports.getFilteredQuestionList = async (req, res, next) => {
-  const { subjectId, difficulty, tags = [], page = 1, limit = 20 } = req.body;
+  const {
+    subjectId,
+    difficulty,
+    tags = [],
+    page = 1,
+    limit = 20,
+    userId = "guest",
+  } = req.body;
 
   try {
     const db = await connectDB();
@@ -61,17 +68,52 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    // 获取总数
-    const total = await db.collection("questions").countDocuments(filter);
+    // 使用聚合管道一次性完成过滤和排除已删除题目
+    const pipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: "userActions",
+          let: { questionId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$userId", userId] },
+                    { $eq: ["$action", "deleted"] },
+                    { $eq: ["$questionId", "$$questionId"] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "deletedActions",
+        },
+      },
+      { $match: { deletedActions: { $size: 0 } } }, // 只保留没有被用户删除的题目
+      { $project: { deletedActions: 0 } }, // 移除临时字段
+    ];
 
-    console.log(pageNum, "pageNum");
+    // 获取总数
+    const countPipeline = [...pipeline, { $count: "total" }];
+    const countResult = await db
+      .collection("questions")
+      .aggregate(countPipeline)
+      .toArray();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+
     // 获取分页数据
+    const dataPipeline = [
+      ...pipeline,
+      { $sort: { createdAt: -1, _id: 1 } }, // 按创建时间倒序，然后按_id正序确保稳定排序
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
     const questions = await db
       .collection("questions")
-      .find(filter)
-      .skip(skip)
-      .limit(limitNum)
-      .sort({ createdAt: -1, _id: 1 }) // 按创建时间倒序，然后按_id正序确保稳定排序
+      .aggregate(dataPipeline)
       .toArray();
 
     const result = {
