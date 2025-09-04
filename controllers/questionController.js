@@ -71,7 +71,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
       .find(filter)
       .skip(skip)
       .limit(limitNum)
-      .sort({ createdAt: -1 }) // 按创建时间倒序
+      .sort({ createdAt: -1, _id: 1 }) // 按创建时间倒序，然后按_id正序确保稳定排序
       .toArray();
 
     const result = {

@@ -108,6 +108,19 @@ async function initDB() {
 
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）
 
+    // 创建索引以提高查询性能
+    console.log(".CreateIndexes...");
+    // 为题目集合创建索引
+    await db.collection("questions").createIndex({ subjectId: 1 });
+    await db.collection("questions").createIndex({ difficulty: 1 });
+    await db.collection("questions").createIndex({ tags: 1 });
+    await db.collection("questions").createIndex({ createdAt: -1 }); // 用于排序
+    await db
+      .collection("questions")
+      .createIndex({ subjectId: 1, difficulty: 1 });
+    await db.collection("questions").createIndex({ subjectId: 1, tags: 1 });
+    console.log("✅ 索引创建完成");
+
     console.log("🎉 数据库初始化完成！");
   } finally {
     await client.close();
