@@ -179,8 +179,7 @@ exports.getDeletedQuestions = async (req, res, next) => {
       {
         $unwind: "$questionDetails",
       },
-      {
-        $project: {
+      { $project: {
           _id: 1,
           userId: 1,
           questionId: 1,
@@ -193,6 +192,10 @@ exports.getDeletedQuestions = async (req, res, next) => {
           "questionDetails.tags": 1,
           "questionDetails.question_markdown": 1,
           "questionDetails.answer_simple_markdown": 1,
+          "questionDetails.answer_detail_markdown": 1,
+          "questionDetails.answer_analysis_markdown": 1,
+          "questionDetails.audioKey": 1,
+          "questionDetails.files": 1,
           "questionDetails.subjectId": 1,
         },
       },

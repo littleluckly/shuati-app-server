@@ -7,30 +7,73 @@ const path = require("path");
 const uri = "mongodb://127.0.0.1:27017";
 // 注意：密码中有 @ 要写成 %40
 
-// 读取 meta.json 文件并转换为 question 数据
+// 读取 questions-meta 目录下的 JSON 文件
 function loadQuestionsFromMeta() {
-  const metaDir = path.join(__dirname, "raw-assets/meta");
+  const metaDir = path.join(__dirname, "raw-assets/questions-meta");
   const questions = [];
 
-  // 读取目录下所有 meta.json 文件
+  // 确保目录存在
+  if (!fs.existsSync(metaDir)) {
+    console.log(`⚠️  目录不存在: ${metaDir}`);
+    return questions;
+  }
+
+  // 读取目录下所有 .json 文件
   const files = fs
     .readdirSync(metaDir)
-    .filter((file) => file.endsWith("_meta.json"));
+    .filter((file) => file.endsWith(".json"));
+
+  console.log(`📁 找到 ${files.length} 个 JSON 文件`);
 
   for (const file of files) {
     const filePath = path.join(metaDir, file);
-    const metaData = JSON.parse(fs.readFileSync(filePath, "utf8"));
-
-    // 将 meta 数据转换为 question 格式
-    const question = {
-      ...metaData,
-      // 注意：subjectId 将在插入时设置
-    };
-
-    questions.push(question);
+    try {
+      const metaData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      questions.push(metaData);
+    } catch (error) {
+      console.error(`❌ 读取文件失败: ${file}`, error.message);
+    }
   }
 
   return questions;
+}
+
+// 从题目数据中提取并去重标签
+function extractTagsFromQuestions(questions) {
+  const tagValues = new Set();
+  const tagMap = new Map();
+
+  // 从所有题目中提取标签
+  questions.forEach(question => {
+    if (question.tags && Array.isArray(question.tags)) {
+      question.tags.forEach(tag => {
+        // 标签格式可能是字符串或对象
+        if (typeof tag === 'string') {
+          // 将字符串标签转换为对象格式并进行规范化
+          const normalizedTag = {
+            name: tag.charAt(0).toUpperCase() + tag.slice(1), // 首字母大写
+            value: tag.toLowerCase()
+          };
+          tagValues.add(normalizedTag.value);
+          tagMap.set(normalizedTag.value, normalizedTag.name);
+        } else if (typeof tag === 'object' && tag.value) {
+          // 如果已经是对象格式，确保 name 和 value 存在
+          const normalizedTag = {
+            name: tag.name || tag.value.charAt(0).toUpperCase() + tag.value.slice(1),
+            value: tag.value.toLowerCase()
+          };
+          tagValues.add(normalizedTag.value);
+          tagMap.set(normalizedTag.value, normalizedTag.name);
+        }
+      });
+    }
+  });
+
+  // 转换为所需的标签数组格式
+  return Array.from(tagValues).map(value => ({
+    name: tagMap.get(value),
+    value
+  })).sort((a, b) => a.name.localeCompare(b.name)); // 按名称排序
 }
 
 async function initDB() {
@@ -48,29 +91,21 @@ async function initDB() {
     await db.collection("subjects").deleteMany({});
     console.log("✅ 数据清理完成");
 
-    // 1. 插入科目
+    // 1. 先加载题目数据，用于提取标签
+    const questionsFromMeta = loadQuestionsFromMeta();
+    console.log(`📊 总共加载 ${questionsFromMeta.length} 道题目`);
+
+    // 2. 从题目数据中提取并去重标签
+    const extractedTags = extractTagsFromQuestions(questionsFromMeta);
+    console.log(`🏷️  提取并去重后得到 ${extractedTags.length} 个标签`);
+
+    // 3. 插入科目（使用从题目中提取的标签）
     const subjects = [
       {
         name: "前端开发面试",
         code: "FE_INTERVIEW",
         description: "涵盖 JS、CSS、Vue、React 等",
-        tags: [
-          { name: "JavaScript", value: "javascript" },
-          { name: "CSS", value: "css" },
-          { name: "React", value: "react" },
-          { name: "Vue", value: "vue" },
-          { name: "工程化", value: "engineering" },
-          { name: "性能优化", value: "performance" },
-          { name: "场景化", value: "scenario" },
-          { name: "移动端开发", value: "mobileDevelopment" },
-          { name: "响应式设计", value: "reactivity" },
-          { name: "声明周期", value: "lifecycle" },
-          { name: "组件化", value: "component" },
-          { name: "首屏渲染", value: "first-screen" },
-          { name: "路由", value: "router" },
-          { name: "HTTP", value: "http" },
-          { name: "事件", value: "modifers" },
-        ],
+        tags: extractedTags,
         userTags: [], // 用户自定义标签数组
         difficultyLevels: [
           { name: "简单", value: "easy" },
@@ -85,10 +120,7 @@ async function initDB() {
     await db.collection("subjects").insertMany(subjects);
     console.log("📌 已插入科目数据");
 
-    // 2. 从 meta.json 文件中加载题目数据
-    const questionsFromMeta = loadQuestionsFromMeta();
-
-    // 为每个题目添加 subjectId，使用 subjects[0]._id
+    // 4. 为每个题目添加 subjectId，使用 subjects[0]._id
     const questions = questionsFromMeta.map((question) => ({
       ...question,
       subjectId: subjects[0]._id,
@@ -100,10 +132,10 @@ async function initDB() {
     if (questions.length > 0) {
       await db.collection("questions").insertMany(questions);
       console.log(
-        `📌 已插入 ${questions.length} 道题目数据（从 meta.json 文件加载）`
+        `📌 已插入 ${questions.length} 道题目数据`
       );
     } else {
-      console.log("⚠️  未找到 meta.json 文件，没有插入题目数据");
+      console.log("⚠️  没有加载到题目数据，未插入题目");
     }
 
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）

@@ -74,6 +74,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 
     // 支持多个标签过滤
     if (tags && tags.length > 0) {
+      // 处理新数据格式中标签可能是字符串数组的情况
       filter.tags = { $in: tags };
     }
 
@@ -209,7 +210,7 @@ exports.getRandomQuestionList = async (req, res, next) => {
       for (const [tag, count] of Object.entries(tagConfig)) {
         const filter = {
           ...baseFilter,
-          tags: { $in: [tag] },
+          tags: { $in: [tag] }, // 处理新数据格式中标签是字符串数组的情况
         };
 
         const questions = await db

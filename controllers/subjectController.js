@@ -110,6 +110,7 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
     }
 
     // 获取该科目下所有题目的标签统计
+    // 处理新数据格式中标签可能是字符串数组的情况
     const tagStats = await db
       .collection("questions")
       .aggregate([
@@ -117,8 +118,19 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
         { $unwind: { path: "$tags", preserveNullAndEmptyArrays: false } },
         {
           $group: {
-            _id: "$tags",
+            _id: { $cond: {
+              if: { $isArray: "$tags" },
+              then: "$tags",
+              else: ["$tags"]
+            }},
             count: { $sum: 1 },
+          },
+        },
+        { $unwind: "$_id" },
+        {
+          $group: {
+            _id: "$_id",
+            count: { $sum: "$count" },
           },
         },
         { $sort: { count: -1 } },
