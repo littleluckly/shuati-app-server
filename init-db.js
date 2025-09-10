@@ -44,23 +44,25 @@ function extractTagsFromQuestions(questions) {
   const tagMap = new Map();
 
   // 从所有题目中提取标签
-  questions.forEach(question => {
+  questions.forEach((question) => {
     if (question.tags && Array.isArray(question.tags)) {
-      question.tags.forEach(tag => {
+      question.tags.forEach((tag) => {
         // 标签格式可能是字符串或对象
-        if (typeof tag === 'string') {
+        if (typeof tag === "string") {
           // 将字符串标签转换为对象格式并进行规范化
           const normalizedTag = {
             name: tag.charAt(0).toUpperCase() + tag.slice(1), // 首字母大写
-            value: tag.toLowerCase()
+            value: tag.toLowerCase(),
           };
           tagValues.add(normalizedTag.value);
           tagMap.set(normalizedTag.value, normalizedTag.name);
-        } else if (typeof tag === 'object' && tag.value) {
+        } else if (typeof tag === "object" && tag.value) {
           // 如果已经是对象格式，确保 name 和 value 存在
           const normalizedTag = {
-            name: tag.name || tag.value.charAt(0).toUpperCase() + tag.value.slice(1),
-            value: tag.value.toLowerCase()
+            name:
+              tag.name ||
+              tag.value.charAt(0).toUpperCase() + tag.value.slice(1),
+            value: tag.value.toLowerCase(),
           };
           tagValues.add(normalizedTag.value);
           tagMap.set(normalizedTag.value, normalizedTag.name);
@@ -70,10 +72,12 @@ function extractTagsFromQuestions(questions) {
   });
 
   // 转换为所需的标签数组格式
-  return Array.from(tagValues).map(value => ({
-    name: tagMap.get(value),
-    value
-  })).sort((a, b) => a.name.localeCompare(b.name)); // 按名称排序
+  return Array.from(tagValues)
+    .map((value) => ({
+      name: tagMap.get(value),
+      value,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name)); // 按名称排序
 }
 
 async function initDB() {
@@ -131,9 +135,7 @@ async function initDB() {
 
     if (questions.length > 0) {
       await db.collection("questions").insertMany(questions);
-      console.log(
-        `📌 已插入 ${questions.length} 道题目数据`
-      );
+      console.log(`📌 已插入 ${questions.length} 道题目数据`);
     } else {
       console.log("⚠️  没有加载到题目数据，未插入题目");
     }
