@@ -43,7 +43,7 @@ MONGODB_URI=mongodb://用户名:密码@线上服务器ip地址:27017/数据库�
 
 ```bash
 npm install -g pm2
-pm2 start server.js  --name "my-node-app" # 启动服务，并给进程取个易记的名字 --watch 模式非常适合开发环境，可以实现代码保存后自动重启。
+pm2 start server.js --watch --name "my-node-app" # 启动服务，并给进程取个易记的名字 --watch 模式非常适合开发环境，可以实现代码保存后自动重启。
 
 # 停止服务
 pm2 stop server.js
