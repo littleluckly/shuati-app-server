@@ -223,3 +223,96 @@ exports.getDeletedQuestions = async (req, res, next) => {
     next(err);
   }
 };
+
+// POST /user-actions/select-subject
+// 接口用途：记录用户选择的科目
+// 使用场景：当用户切换科目时调用此接口
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+// - subjectId: 科目ID，必填
+exports.selectSubject = async (req, res, next) => {
+  const { userId = "guest", subjectId } = req.body;
+
+  if (!subjectId) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: subjectId"));
+  }
+
+  try {
+    const db = await connectDB();
+    
+    // 首先验证科目是否存在
+    const subject = await db.collection("subjects").findOne({
+      _id: new ObjectId(subjectId)
+    });
+    
+    if (!subject) {
+      return res.status(404).json(ApiResponse.error("科目不存在"));
+    }
+    
+    // 更新或插入用户选择的科目记录
+    const result = await db.collection("userActions").updateOne(
+      {
+        userId,
+        action: "selected_subject"
+      },
+      {
+        $set: {
+          subjectId: new ObjectId(subjectId),
+          updatedAt: new Date()
+        },
+        $setOnInsert: {
+          createdAt: new Date()
+        }
+      },
+      {
+        upsert: true
+      }
+    );
+    
+    const message = result.upsertedCount > 0 ? "科目选择记录创建成功" : "科目选择记录更新成功";
+    res.json(ApiResponse.success({
+      userId,
+      subjectId,
+      subjectName: subject.name
+    }, message));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /user-actions/current-subject
+// 接口用途：获取用户当前选择的科目
+// 使用场景：应用启动时获取用户上次选择的科目
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+exports.getCurrentSubject = async (req, res, next) => {
+  const { userId = "guest" } = req.query;
+
+  try {
+    const db = await connectDB();
+    
+    // 获取用户选择的科目记录
+    const userAction = await db.collection("userActions").findOne(
+      { userId, action: "selected_subject" },
+      { sort: { updatedAt: -1 } }
+    );
+    
+    if (!userAction) {
+      // 如果没有选择记录，返回默认科目（第一个启用的科目）
+      const defaultSubject = await db.collection("subjects").findOne({
+        isEnabled: true
+      });
+      
+      return res.json(ApiResponse.success(defaultSubject || null));
+    }
+    
+    // 获取科目详情
+    const subject = await db.collection("subjects").findOne({
+      _id: userAction.subjectId
+    });
+    
+    res.json(ApiResponse.success(subject || null));
+  } catch (err) {
+    next(err);
+  }
+};
