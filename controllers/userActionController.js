@@ -38,6 +38,116 @@ exports.recordUserAction = async (req, res, next) => {
   }
 };
 
+// POST /user-actions/forgot-password
+// 接口用途：忘记密码，发送重置密码链接到用户邮箱
+// 使用场景：用户忘记密码时调用此接口
+// 参数说明：
+// - email: 用户邮箱，必填
+exports.forgotPassword = async (req, res, next) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: email"));
+  }
+  
+  try {
+    const db = await connectDB();
+    
+    // 查找邮箱对应的用户
+    const user = await db.collection("users").findOne({
+      email,
+      isEnabled: true
+    });
+    
+    if (!user) {
+      // 为了安全起见，即使邮箱不存在也返回成功消息，不泄露用户信息
+      return res.json(ApiResponse.success(null, "如果该邮箱存在，我们已发送重置密码链接"));
+    }
+    
+    // 生成重置密码令牌，有效期15分钟
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60000); // 15分钟后过期
+    const resetToken = `reset_${user._id}_${now.getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 保存重置密码令牌到用户行为集合
+    await db.collection("userActions").insertOne({
+      userId: user._id.toString(),
+      action: "reset_password_request",
+      email,
+      resetToken,
+      expiresAt,
+      createdAt: now
+    });
+    
+    // 在实际应用中，这里应该发送邮件到用户邮箱，包含重置密码链接
+    // 链接中应包含resetToken和userId参数
+    console.log(`生成密码重置令牌 ${resetToken} 给用户 ${user.username}(${user.email})`);
+    
+    res.json(ApiResponse.success(null, "如果该邮箱存在，我们已发送重置密码链接"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /user-actions/reset-password
+// 接口用途：重置密码
+// 使用场景：用户通过重置密码链接进入后调用此接口
+// 参数说明：
+// - userId: 用户ID，必填
+// - resetToken: 重置密码令牌，必填
+// - newPassword: 新密码，必填
+exports.resetPassword = async (req, res, next) => {
+  const { userId, resetToken, newPassword } = req.body;
+  
+  if (!userId || !resetToken || !newPassword) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: userId、resetToken 和 newPassword"));
+  }
+  
+  try {
+    const db = await connectDB();
+    const now = new Date();
+    
+    // 验证重置密码请求是否有效
+    const resetRequest = await db.collection("userActions").findOne({
+      userId,
+      action: "reset_password_request",
+      resetToken,
+      expiresAt: { $gt: now }, // 令牌未过期
+      isUsed: { $ne: true } // 令牌未被使用
+    });
+    
+    if (!resetRequest) {
+      return res.status(400).json(ApiResponse.error("无效或已过期的重置密码链接"));
+    }
+    
+    // 更新用户密码
+    await db.collection("users").updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          password: newPassword, // 注意：实际环境应使用加密密码
+          updatedAt: now
+        }
+      }
+    );
+    
+    // 标记重置密码令牌为已使用
+    await db.collection("userActions").updateOne(
+      { _id: resetRequest._id },
+      {
+        $set: {
+          isUsed: true,
+          usedAt: now
+        }
+      }
+    );
+    
+    res.json(ApiResponse.success(null, "密码重置成功，请使用新密码登录"));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /user-actions/user-info
 // 接口用途：获取用户信息，用于验证登录状态
 // 使用场景：
@@ -438,6 +548,7 @@ exports.login = async (req, res, next) => {
     res.json(ApiResponse.success({
       userId: user._id.toString(),
       username: user.username,
+      email: user.email || '',
       role: user.role,
       token,
       lastLogin: now

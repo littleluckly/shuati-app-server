@@ -151,11 +151,21 @@ async function initDB() {
         username: 'admin',
         password: 'admin123', // 注意：实际环境必须使用加密存储
         role: 'admin',
+        email: 'admin@example.com', // 默认管理员邮箱
         isEnabled: true,
         createdAt: new Date(),
         updatedAt: new Date()
       });
       console.log('👤 已添加默认管理员用户');
+    } else {
+      // 如果存在管理员用户但没有email字段，添加email字段
+      if (!existingAdmin.email) {
+        await usersCollection.updateOne(
+          { _id: existingAdmin._id },
+          { $set: { email: 'admin@example.com', updatedAt: new Date() } }
+        );
+        console.log('🔧 已更新管理员用户，添加email字段');
+      }
     }
     
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）

@@ -1125,6 +1125,107 @@ Authorization: Bearer token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456
 {"success": false, "data": null, "message": "无效的登录状态，请重新登录"}
 ```
 
+### 3.11 忘记密码
+
+**接口地址**: `POST /user-actions/forgot-password`
+
+**接口描述**: 用户忘记密码时，发送重置密码链接到用户邮箱
+
+**使用场景**: 用户忘记密码，需要通过邮箱重置密码
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| email | string | body | 是 | 用户注册时使用的邮箱 |
+
+**请求示例**:
+
+```
+POST http://localhost:3000/user-actions/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**响应示例**:
+
+成功（无论邮箱是否存在，为了安全都返回相同消息）：
+```
+{
+  "success": true,
+  "data": null,
+  "message": "如果该邮箱存在，我们已发送重置密码链接"
+}
+```
+
+失败（参数缺失）：
+```
+{
+  "success": false,
+  "data": null,
+  "message": "缺少必要参数: email"
+}
+```
+
+### 3.12 重置密码
+
+**接口地址**: `POST /user-actions/reset-password`
+
+**接口描述**: 用户通过邮箱中的重置链接重置密码
+
+**使用场景**: 用户点击重置密码链接后，设置新密码
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| userId | string | body | 是 | 用户ID，通常从重置链接中获取 |
+| resetToken | string | body | 是 | 重置密码令牌，通常从重置链接中获取 |
+| newPassword | string | body | 是 | 新密码 |
+
+**请求示例**:
+
+```
+POST http://localhost:3000/user-actions/reset-password
+Content-Type: application/json
+
+{
+  "userId": "60d0fe4f5311236168a109ca",
+  "resetToken": "reset_60d0fe4f5311236168a109ca_1623722436345_def456",
+  "newPassword": "new_password123"
+}
+```
+
+**响应示例**:
+
+成功：
+```
+{
+  "success": true,
+  "data": null,
+  "message": "密码重置成功，请使用新密码登录"
+}
+```
+
+失败（参数缺失）：
+```
+{
+  "success": false,
+  "data": null,
+  "message": "缺少必要参数: userId、resetToken 和 newPassword"
+}
+```
+
+失败（无效或已过期的重置密码链接）：
+```
+{
+  "success": false,
+  "data": null,
+  "message": "无效或已过期的重置密码链接"
+}
+```
+
 ---
 
 ## 4. 状态码说明
@@ -1216,6 +1317,7 @@ Authorization: Bearer token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456
   "_id": "ObjectId",
   "username": "用户名",
   "password": "密码",
+  "email": "邮箱地址",
   "role": "用户角色",
   "isEnabled": true,
   "lastLogin": "Date",
@@ -1447,6 +1549,36 @@ async function getUserInfoByHeader(token) {
   const result = await response.json();
   console.log(result);
 }
+
+// 忘记密码，发送重置密码链接
+async function forgotPassword(email) {
+  const response = await fetch("http://localhost:3000/user-actions/forgot-password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+  const result = await response.json();
+  console.log(result);
+}
+
+// 重置密码
+async function resetPassword(userId, resetToken, newPassword) {
+  const response = await fetch("http://localhost:3000/user-actions/reset-password", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      resetToken,
+      newPassword
+    }),
+  });
+  const result = await response.json();
+  console.log(result);
+}
 ```
 
 ### 8.2 cURL 示例
@@ -1511,11 +1643,30 @@ curl -X GET "http://localhost:3000/user-actions/user-info?token=token_64f1a2b3c4
 # 获取用户信息（通过请求头传递token）
 curl -X GET http://localhost:3000/user-actions/user-info \
   -H "Authorization: Bearer token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"
+
+# 忘记密码
+curl -X POST http://localhost:3000/user-actions/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# 重置密码
+curl -X POST http://localhost:3000/user-actions/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"64f1a2b3c4d5e6f789012347","resetToken":"reset_64f1a2b3c4d5e6f789012347_1622544000000_def456abc123","newPassword":"new_password123"}'
 ```
 
 ---
 
 ## 9. 更新日志
+
+### v1.9.0 (2024-05-26)
+
+- 在用户(User)数据模型中添加email字段
+- 更新登录接口，返回用户email信息
+- 新增忘记密码接口 (`POST /user-actions/forgot-password`)
+- 新增重置密码接口 (`POST /user-actions/reset-password`)
+- 支持通过邮箱进行密码重置功能
+- 在示例代码中添加忘记密码和重置密码的使用示例
 
 ### v1.8.0 (2024-05-25)
 
