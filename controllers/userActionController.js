@@ -3,6 +3,74 @@ const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
 
+// POST /user-actions/register
+// 接口用途：用户注册
+// 使用场景：新用户创建账号时调用此接口
+// 参数说明：
+// - username: 用户名，必填
+// - password: 密码，必填
+// - email: 邮箱，必填
+exports.register = async (req, res, next) => {
+  const { username, password, email } = req.body;
+  
+  if (!username || !password || !email) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: username、password 和 email"));
+  }
+  
+  try {
+    const db = await connectDB();
+    const now = new Date();
+    
+    // 检查用户名是否已存在
+    const existingUserByUsername = await db.collection("users").findOne({
+      username
+    });
+    
+    if (existingUserByUsername) {
+      return res.status(400).json(ApiResponse.error("用户名已存在"));
+    }
+    
+    // 检查邮箱是否已存在
+    const existingUserByEmail = await db.collection("users").findOne({
+      email
+    });
+    
+    if (existingUserByEmail) {
+      return res.status(400).json(ApiResponse.error("邮箱已被注册"));
+    }
+    
+    // 创建新用户（注意：实际生产环境应使用密码加密，如bcrypt）
+    const newUser = {
+      username,
+      password, // 注意：实际环境应使用加密密码
+      email,
+      role: "user",
+      isEnabled: true,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const result = await db.collection("users").insertOne(newUser);
+    
+    // 记录注册行为
+    await db.collection("userActions").insertOne({
+      userId: result.insertedId.toString(),
+      action: "register",
+      username,
+      email,
+      createdAt: now
+    });
+    
+    res.json(ApiResponse.success({
+      userId: result.insertedId.toString(),
+      username,
+      email
+    }, "注册成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // POST /user-actions
 // 接口用途：记录用户对题目的操作行为（收藏/删除）
 // 使用场景：当用户收藏或删除题目时调用此接口
