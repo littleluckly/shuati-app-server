@@ -1068,6 +1068,63 @@ Content-Type: application/json
 {"success": false, "data": null, "message": "缺少必要参数: userId 和 token"}
 ```
 
+### 3.10 获取用户信息
+
+**接口地址**: `GET /user-actions/user-info`
+
+**接口描述**: 获取用户信息，用于判断用户是否已登录及验证登录状态有效性
+
+**使用场景**:
+- 应用启动时检查用户是否已登录
+- 定时验证登录状态有效性
+- 获取当前登录用户的基本信息
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| token | string | query/header | 是 | 用户登录时获取的token，推荐使用请求头：Authorization: Bearer {token} |
+
+**请求示例** (使用查询参数):
+
+```
+GET http://localhost:3000/user-actions/user-info?token=token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456
+```
+
+**请求示例** (使用请求头):
+
+```
+GET http://localhost:3000/user-actions/user-info
+Authorization: Bearer token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456
+```
+
+**响应示例** (已登录):
+
+```
+{
+  "success": true,
+  "data": {
+    "userId": "64f1a2b3c4d5e6f789012347",
+    "username": "admin",
+    "role": "admin",
+    "lastLogin": "2021-06-01T10:00:00.000Z",
+    "isLoggedIn": true
+  },
+  "message": "获取用户信息成功"
+}
+```
+
+**错误响应** (token缺失):
+
+```
+{"success": false, "data": null, "message": "缺少必要参数: token"}
+```
+
+**错误响应** (无效的登录状态):
+
+```
+{"success": false, "data": null, "message": "无效的登录状态，请重新登录"}
+```
+
 ---
 
 ## 4. 状态码说明
@@ -1371,6 +1428,25 @@ async function logout(userId, token) {
   const result = await response.json();
   console.log(result);
 }
+
+// 获取用户信息（通过查询参数传递token）
+async function getUserInfoByQuery(token) {
+  const response = await fetch(`http://localhost:3000/user-actions/user-info?token=${token}`);
+  const result = await response.json();
+  console.log(result);
+}
+
+// 获取用户信息（通过请求头传递token）
+async function getUserInfoByHeader(token) {
+  const response = await fetch("http://localhost:3000/user-actions/user-info", {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
+  const result = await response.json();
+  console.log(result);
+}
 ```
 
 ### 8.2 cURL 示例
@@ -1428,11 +1504,25 @@ curl -X POST http://localhost:3000/user-actions/login \
 curl -X POST http://localhost:3000/user-actions/logout \
   -H "Content-Type: application/json" \
   -d '{"userId":"64f1a2b3c4d5e6f789012347","token":"token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"}'
+
+# 获取用户信息（通过查询参数传递token）
+curl -X GET "http://localhost:3000/user-actions/user-info?token=token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"
+
+# 获取用户信息（通过请求头传递token）
+curl -X GET http://localhost:3000/user-actions/user-info \
+  -H "Authorization: Bearer token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"
 ```
 
 ---
 
 ## 9. 更新日志
+
+### v1.8.0 (2024-05-25)
+
+- 新增获取用户信息接口 (`GET /user-actions/user-info`)
+- 支持通过查询参数或请求头（Authorization: Bearer）传递token
+- 用于判断用户是否已登录及验证登录状态有效性
+- 在示例代码中添加获取用户信息的使用示例
 
 ### v1.7.0 (2024-05-24)
 

@@ -38,6 +38,71 @@ exports.recordUserAction = async (req, res, next) => {
   }
 };
 
+// GET /user-actions/user-info
+// 接口用途：获取用户信息，用于验证登录状态
+// 使用场景：
+// - 应用启动时检查用户是否已登录
+// - 定时验证登录状态有效性
+// - 获取当前登录用户的基本信息
+// 参数说明：
+// - token: 用户登录时获取的token，必填，可通过查询参数或请求头传递
+// - 推荐使用请求头：Authorization: Bearer {token}
+exports.getUserInfo = async (req, res, next) => {
+  // 优先从请求头获取token
+  let token = req.headers.authorization;
+  if (token && token.startsWith('Bearer ')) {
+    token = token.substring(7);
+  }
+  
+  // 如果请求头中没有token，则从查询参数中获取
+  if (!token) {
+    token = req.query.token;
+  }
+  
+  if (!token) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: token"));
+  }
+  
+  try {
+    const db = await connectDB();
+    
+    // 查找有效的登录记录
+    const loginRecord = await db.collection("userActions").findOne({
+      action: "login",
+      token: token,
+      logoutTime: { $exists: false } // 确保未登出
+    });
+    
+    if (!loginRecord) {
+      return res.status(401).json(ApiResponse.error("无效的登录状态，请重新登录"));
+    }
+    
+    // 获取用户详细信息
+    const user = await db.collection("users").findOne({
+      _id: new ObjectId(loginRecord.userId),
+      isEnabled: true
+    });
+    
+    if (!user) {
+      return res.status(401).json(ApiResponse.error("用户不存在或已禁用"));
+    }
+    
+    // 返回用户信息（不包含敏感信息如密码）
+    res.json(ApiResponse.success({
+      userId: user._id.toString(),
+      username: user.username,
+      role: user.role,
+      lastLogin: loginRecord.lastLogin,
+      isLoggedIn: true
+    }, "获取用户信息成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 引入ObjectId用于MongoDB ID处理
+const { ObjectId } = require('mongodb');
+
 // GET /user-actions/stats
 // 接口用途：获取用户的操作统计信息
 // 使用场景：在用户个人中心或统计页面显示用户收藏和删除的题目数量

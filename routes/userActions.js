@@ -10,7 +10,8 @@ const {
   selectSubject,
   getCurrentSubject,
   login,
-  logout
+  logout,
+  getUserInfo
 } = require("../controllers/userActionController");
 
 router.post("/", recordUserAction);
@@ -23,5 +24,6 @@ router.post("/select-subject", selectSubject);
 router.get("/current-subject", getCurrentSubject);
 router.post("/login", login);
 router.post("/logout", logout);
+router.get("/user-info", getUserInfo);
 
 module.exports = router;
