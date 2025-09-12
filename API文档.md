@@ -101,6 +101,9 @@ GET http://localhost:3000/subjects/all
       "tags": [
         { "name": "JavaScript", "type": "language" },
         { "name": "CSS", "type": "style" },
+        { "name": "React", "type": "framework" },
+        { "name": "Vue", "type": "framework" },
+        { "name": "工程化", "type": "tooling" }
       ],
       "userTags": [
         { "name": "面试重点", "type": "priority" },
@@ -110,13 +113,11 @@ GET http://localhost:3000/subjects/all
       "isEnabled": true,
       "createdAt": "2023-09-01T00:00:00.000Z",
       "updatedAt": "2023-09-01T00:00:00.000Z",
-      "questionStats": {
-        "total": 25,
-        "byDifficulty": {
-          "easy": 10,
-          "medium": 10,
-          "hard": 5
-        }
+      "questionCount": 120,
+      "difficultyCount": {
+        "easy": 40,
+        "medium": 50,
+        "hard": 30
       }
     }
   ],
@@ -124,16 +125,21 @@ GET http://localhost:3000/subjects/all
 }
 ```
 
+**字段说明**:
+
+- `questionCount`: 该科目的题目总数
+- `difficultyCount`: 各难度等级的题目数量
+
 ### 1.3 根据 ID 获取科目详情
 
 **接口地址**: `GET /subjects/:id`
 
-**接口描述**: 根据科目 ID 获取科目详细信息
+**接口描述**: 根据科目 ID 获取科目详情
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
-| id | string | path | 是 | 科目的 ObjectId |
+| id | string | path | 是 | 科目 ID |
 
 **请求示例**:
 
@@ -153,9 +159,15 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
     "description": "涵盖 JS、CSS、Vue、React 等",
     "tags": [
       { "name": "JavaScript", "type": "language" },
-      { "name": "CSS", "type": "style" }
+      { "name": "CSS", "type": "style" },
+      { "name": "React", "type": "framework" },
+      { "name": "Vue", "type": "framework" },
+      { "name": "工程化", "type": "tooling" }
     ],
-    "userTags": [{ "name": "面试重点", "type": "priority" }],
+    "userTags": [
+      { "name": "面试重点", "type": "priority" },
+      { "name": "高频题", "type": "frequency" }
+    ],
     "difficultyLevels": ["简单", "中等", "困难"],
     "isEnabled": true,
     "createdAt": "2023-09-01T00:00:00.000Z",
@@ -168,59 +180,24 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345
 **错误响应**:
 
 ```
-{
-  "success": false,
-  "data": null,
-  "message": "科目不存在"
-}
+{"success": false, "data": null, "message": "科目不存在"}
 ```
 
-### 1.4 根据科目 ID 获取所有标签计数
+### 1.4 根据科目 ID 获取所有标签
 
-**接口地址**: `GET /subjects/:id/tags-count`
+**接口地址**: `GET /subjects/:id/tags`
 
-**接口描述**: 根据科目 ID 获取该科目下所有题目的标签及其数量统计
+**接口描述**: 根据科目 ID 获取该科目下的所有标签列表
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
-| id | string | path | 是 | 科目的 ObjectId |
+| id | string | path | 是 | 科目 ID |
 
 **请求示例**:
 
 ```
 GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags
-```
-
-**响应示例**:
-
-```
-{
-  "success": true,
-  "data": [
-    { "name": "vue", "count": 15 },
-    { "name": "javascript", "count": 12 },
-    { "name": "react", "count": 10 }
-  ],
-  "message": "操作成功"
-}
-```
-
-### 1.5 根据科目 ID 获取所有标签（不带统计）
-
-**接口地址**: `GET /subjects/:id/all-tags`
-
-**接口描述**: 获取指定科目的所有标签，不包含数量统计
-
-**请求参数**:
-| 参数名 | 类型 | 位置 | 必填 | 说明 |
-|--------|------|------|------|------|
-| id | string | path | 是 | 科目的 ObjectId |
-
-**请求示例**:
-
-```
-GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
 ```
 
 **响应示例**:
@@ -239,98 +216,75 @@ GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/all-tags
 }
 ```
 
-### 1.6 根据科目 ID 获取困难程度统计
+### 1.5 根据科目 ID 获取标签计数
 
-**接口地址**: `GET /subjects/:id/difficulty-levels`
+**接口地址**: `GET /subjects/:id/tags-count`
 
-**接口描述**: 根据科目 ID 获取该科目下所有题目的难度统计信息
+**接口描述**: 根据科目 ID 获取该科目下的标签统计信息
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
-| id | string | path | 是 | 科目的 ObjectId |
+| id | string | path | 是 | 科目 ID |
 
 **请求示例**:
 
 ```
-GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-levels
+GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/tags-count
 ```
 
 **响应示例**:
 
 ```
 {
-"success": true,
-"data": [
-{ "level": "简单", "value": 10 },
-{ "level": "中等", "value": 10 },
-{ "level": "困难", "value": 5 }
-],
-"message": "操作成功"
+  "success": true,
+  "data": [
+    { "name": "JavaScript", "count": 45 },
+    { "name": "CSS", "count": 30 },
+    { "name": "React", "count": 25 },
+    { "name": "Vue", "count": 20 },
+    { "name": "工程化", "count": 15 }
+  ],
+  "message": "操作成功"
 }
 ```
 
-### 1.7 根据科目 ID 获取困难程度选项
+**字段说明**:
 
-**接口地址**: `GET /subjects/:id/difficulty-options`
-
-**接口描述**: 根据科目 ID 获取该科目下所有题目的难度选项列表
-
-**请求参数**:
-| 参数名 | 类型 | 位置 | 必填 | 说明 |
-|--------|------|------|------|------|
-| id | string | path | 是 | 科目的 ObjectId |
-
-**请求示例**:
-
-```
-GET http://localhost:3000/subjects/64f1a2b3c4d5e6f789012345/difficulty-options
-```
-
-**响应示例**:
-
-```
-{
-"success": true,
-"data": [
-{ "name": "简单", "value": "easy" },
-{ "name": "中等", "value": "medium" },
-{ "name": "困难", "value": "hard" }
-],
-"message": "操作成功"
-}
-```
+- `count`: 该标签下的题目数量
 
 ---
 
 ## 2. 题目管理 API
 
-### 2.1 获取随机题目
+### 2.1 随机获取题目
 
 **接口地址**: `GET /questions/random`
 
-**接口描述**: 随机获取一道题目，支持按科目和难度过滤
+**接口描述**: 随机获取一道题目
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
 | subjectId | string | query | 否 | 科目 ID |
 | difficulty | string | query | 否 | 难度等级：easy、medium、hard |
+| excludeIds | string | query | 否 | 排除的题目 ID，多个用逗号分隔 |
+| tags | string | query | 否 | 标签过滤，多个用逗号分隔 |
 
 **请求示例**:
 
 ```
-# 获取任意随机题目
+# 获取任意一道题目
 GET http://localhost:3000/questions/random
 
-# 获取指定科目的随机题目
+# 获取指定科目的题目
 GET http://localhost:3000/questions/random?subjectId=64f1a2b3c4d5e6f789012345
 
-# 获取指定难度的随机题目
+# 获取指定难度的题目
 GET http://localhost:3000/questions/random?difficulty=medium
 
-# 组合过滤
-GET http://localhost:3000/questions/random?subjectId=64f1a2b3c4d5e6f789012345&difficulty=hard
+# 获取指定标签的题目
+GET http://localhost:3000/questions/random?tags=javascript,react
 ```
 
 **响应示例**:
@@ -346,14 +300,18 @@ GET http://localhost:3000/questions/random?subjectId=64f1a2b3c4d5e6f789012345&di
     "tags": ["vue", "lifecycle"],
     "question_markdown": "Vue 2.x 生命周期有哪些？分别做了什么？",
     "answer_simple_markdown": "beforeCreate → created → beforeMount → mounted...",
-    "answer_analysis_markdown": "- beforeCreate：实例刚初始化...",
+    "answer_analysis_markdown": "详细解析内容...",
     "files": {
-      "audio_simple": "q0001_285acd89_audio_simple.mp3",
-      "audio_question": "q0001_285acd89_audio_question.mp3",
-      "audio_analysis": "q0001_285acd89_audio_analysis.mp3",
-      "meta": "q0001_285acd89_meta.json"
+      "audio_simple": "path/to/audio_simple.mp3",
+      "audio_question": "path/to/audio_question.mp3",
+      "audio_analysis": "path/to/audio_analysis.mp3",
+      "meta": "path/to/meta.json"
     },
-    "subjectId": "64f1a2b3c4d5e6f789012345"
+    "subjectId": "64f1a2b3c4d5e6f789012345",
+    "question_length": 25,
+    "simple_answer_length": 120,
+    "detailed_analysis_length": 500,
+    "created_at": "2023-09-01T10:00:00.000Z"
   },
   "message": "操作成功"
 }
@@ -362,36 +320,40 @@ GET http://localhost:3000/questions/random?subjectId=64f1a2b3c4d5e6f789012345&di
 **错误响应**:
 
 ```
-{
-  "success": false,
-  "data": null,
-  "message": "暂无符合条件的题目"
-}
+{"success": false, "data": null, "message": "暂无符合条件的题目"}
 ```
 
-### 2.2 获取随机题目列表
+### 2.2 随机获取题目列表
 
 **接口地址**: `POST /questions/random-list`
 
-**接口描述**: 根据科目和配置随机获取一组题目，支持自定义难度分布和标签配置
+**接口描述**: 随机获取指定数量的题目列表
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
-| subjectId | string | body | 是 | 科目 ID |
-| total | number | body | 否 | 题目总数，默认 10 |
-| difficultyConfig | object | body | 否 | 难度分布配置，默认：{easy: 0.4, medium: 0.4, hard: 0.2} |
-| tagConfig | object | body | 否 | 标签配置，格式：{tagName: count} |
+| subjectId | string | body | 否 | 科目 ID |
+| total | number | body | 否 | 题目数量，默认 10，最大 50 |
+| difficultyConfig | object | body | 否 | 难度分布配置，例如：{"easy": 0.4, "medium": 0.4, "hard": 0.2} |
+| excludeIds | array | body | 否 | 排除的题目 ID 数组 |
+| tags | array | body | 否 | 标签过滤数组 |
 
 **请求示例**:
 
 ```
-# 使用默认配置获取随机题目列表
+# 随机获取 10 道题目
+POST http://localhost:3000/questions/random-list
+Content-Type: application/json
+
+{}
+
+# 随机获取指定科目的 20 道题目
 POST http://localhost:3000/questions/random-list
 Content-Type: application/json
 
 {
-  "subjectId": "64f1a2b3c4d5e6f789012345"
+  "subjectId": "64f1a2b3c4d5e6f789012345",
+  "total": 20
 }
 
 # 自定义难度分布
@@ -400,7 +362,7 @@ Content-Type: application/json
 
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
-  "total": 15,
+  "total": 20,
   "difficultyConfig": {
     "easy": 0.3,
     "medium": 0.5,
@@ -408,18 +370,13 @@ Content-Type: application/json
   }
 }
 
-# 按标签配置获取题目
+# 按标签过滤
 POST http://localhost:3000/questions/random-list
 Content-Type: application/json
 
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
-  "total": 10,
-  "tagConfig": {
-    "vue": 4,
-    "javascript": 3,
-    "react": 3
-  }
+  "tags": ["vue", "javascript"]
 }
 ```
 
@@ -438,26 +395,31 @@ Content-Type: application/json
         "tags": ["vue", "lifecycle"],
         "question_markdown": "Vue 2.x 生命周期有哪些？分别做了什么？",
         "answer_simple_markdown": "beforeCreate → created → beforeMount → mounted...",
-        "answer_analysis_markdown": "- beforeCreate：实例刚初始化...",
+        "answer_analysis_markdown": "详细解析内容...",
         "files": {
-          "audio_simple": "q0001_285acd89_audio_simple.mp3",
-          "audio_question": "q0001_285acd89_audio_question.mp3",
-          "audio_analysis": "q0001_285acd89_audio_analysis.mp3",
-          "meta": "q0001_285acd89_meta.json"
+          "audio_simple": "path/to/audio_simple.mp3",
+          "audio_question": "path/to/audio_question.mp3",
+          "audio_analysis": "path/to/audio_analysis.mp3",
+          "meta": "path/to/meta.json"
         },
-        "subjectId": "64f1a2b3c4d5e6f789012345"
+        "subjectId": "64f1a2b3c4d5e6f789012345",
+        "question_length": 25,
+        "simple_answer_length": 120,
+        "detailed_analysis_length": 500,
+        "created_at": "2023-09-01T10:00:00.000Z"
       }
-      // ... 更多题目
+      // 更多题目...
     ],
-    "total": 10,
-    "config": {
-      "requestedTotal": 10,
-      "difficultyConfig": {
-        "easy": 0.4,
-        "medium": 0.4,
-        "hard": 0.2
-      },
-      "tagConfig": null
+    "stats": {
+      "total": 10,
+      "easy": 4,
+      "medium": 4,
+      "hard": 2,
+      "tags": {
+        "vue": 6,
+        "javascript": 5,
+        "react": 3
+      }
     }
   },
   "message": "操作成功"
@@ -467,89 +429,45 @@ Content-Type: application/json
 **错误响应**:
 
 ```
-{
-  "success": false,
-  "data": null,
-  "message": "缺少科目 ID 参数"
-}
+{"success": false, "data": null, "message": "暂无符合条件的题目"}
 ```
 
 ### 2.3 获取过滤的题目列表
 
 **接口地址**: `POST /questions/list`
 
-**接口描述**: 根据科目、难度和多个标签过滤获取题目列表，支持分页
+**接口描述**: 根据条件过滤题目并返回分页列表
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
 | subjectId | string | body | 否 | 科目 ID |
-| difficulty | string/array | body | 否 | 难度等级，单个值或数组（支持多个）：easy、medium、hard |
-| tags | array | body | 否 | 标签数组，支持多个标签 |
+| difficulty | array | body | 否 | 难度等级数组，例如：["easy", "medium"] |
+| tags | array | body | 否 | 标签数组，例如：["vue", "javascript"] |
 | page | number | body | 否 | 页码，默认 1 |
-| limit | number | body | 否 | 每页数量，默认 20 |
-| userId | string | body | 否 | 用户 ID，默认为 "guest"，用于过滤用户已删除的题目 |
+| limit | number | body | 否 | 每页数量，默认 20，最大 50 |
 
 **请求示例**:
 
 ```
-# 获取指定科目的所有题目（不包含用户已删除的）
+# 获取所有题目（分页）
 POST http://localhost:3000/questions/list
 Content-Type: application/json
 
 {
-  "subjectId": "64f1a2b3c4d5e6f789012345",
-  "userId": "user123",
   "page": 1,
   "limit": 10
 }
 
-# 按单个难度过滤
-POST http://localhost:3000/questions/list
-Content-Type: application/json
-
-{
-  "subjectId": "64f1a2b3c4d5e6f789012345",
-  "difficulty": "medium",
-  "userId": "user123",
-  "page": 1,
-  "limit": 20
-}
-
-# 按多个难度过滤
+# 根据条件过滤题目
 POST http://localhost:3000/questions/list
 Content-Type: application/json
 
 {
   "subjectId": "64f1a2b3c4d5e6f789012345",
   "difficulty": ["easy", "medium"],
-  "userId": "user123",
+  "tags": ["vue", "javascript"],
   "page": 1,
-  "limit": 20
-}
-
-# 按多个标签过滤
-POST http://localhost:3000/questions/list
-Content-Type: application/json
-
-{
-  "subjectId": "64f1a2b3c4d5e6f789012345",
-  "tags": ["vue", "javascript", "lifecycle"],
-  "userId": "user123",
-  "page": 1,
-  "limit": 15
-}
-
-# 组合过滤（多个难度 + 多个标签）
-POST http://localhost:3000/questions/list
-Content-Type: application/json
-
-{
-  "subjectId": "64f1a2b3c4d5e6f789012345",
-  "difficulty": ["easy", "medium"],
-  "tags": ["vue", "component"],
-  "userId": "user123",
-  "page": 2,
   "limit": 10
 }
 ```
@@ -569,63 +487,55 @@ Content-Type: application/json
         "tags": ["vue", "lifecycle"],
         "question_markdown": "Vue 2.x 生命周期有哪些？分别做了什么？",
         "answer_simple_markdown": "beforeCreate → created → beforeMount → mounted...",
-        "answer_analysis_markdown": "- beforeCreate：实例刚初始化...",
+        "answer_analysis_markdown": "详细解析内容...",
         "files": {
-          "audio_simple": "q0001_285acd89_audio_simple.mp3",
-          "audio_question": "q0001_285acd89_audio_question.mp3",
-          "audio_analysis": "q0001_285acd89_audio_analysis.mp3",
-          "meta": "q0001_285acd89_meta.json"
+          "audio_simple": "path/to/audio_simple.mp3",
+          "audio_question": "path/to/audio_question.mp3",
+          "audio_analysis": "path/to/audio_analysis.mp3",
+          "meta": "path/to/meta.json"
         },
-        "subjectId": "64f1a2b3c4d5e6f789012345"
+        "subjectId": "64f1a2b3c4d5e6f789012345",
+        "question_length": 25,
+        "simple_answer_length": 120,
+        "detailed_analysis_length": 500,
+        "created_at": "2023-09-01T10:00:00.000Z"
       }
-      // ... 更多题目
+      // 更多题目...
     ],
     "pagination": {
       "page": 1,
-      "limit": 20,
-      "total": 45,
-      "totalPages": 3,
+      "limit": 10,
+      "total": 120,
+      "totalPages": 12,
       "hasNext": true,
       "hasPrev": false
-    },
-    "filters": {
-      "subjectId": "64f1a2b3c4d5e6f789012345",
-      "difficulty": "easy",
-      "tags": ["vue", "lifecycle"]
     }
   },
   "message": "操作成功"
 }
 ```
 
-**分页字段说明**:
+**错误响应**:
 
-- `page`: 当前页码
-- `limit`: 每页数量
-- `total`: 总题目数
-- `totalPages`: 总页数
-- `hasNext`: 是否有下一页
-- `hasPrev`: 是否有上一页
+```
+{"success": false, "data": null, "message": "暂无符合条件的题目"}
+```
 
 ### 2.4 根据 ID 获取题目详情
 
 **接口地址**: `GET /questions/:id`
 
-**接口描述**: 根据题目 ID 获取题目详细信息
+**接口描述**: 根据题目 ID 获取题目详情
 
 **请求参数**:
 | 参数名 | 类型 | 位置 | 必填 | 说明 |
 |--------|------|------|------|------|
-| id | string | path | 是 | 题目 ID（支持 ObjectId 或自定义 ID） |
+| id | string | path | 是 | 题目 ID |
 
 **请求示例**:
 
 ```
-# 使用 ObjectId 获取
 GET http://localhost:3000/questions/64f1a2b3c4d5e6f789012346
-
-# 使用自定义 ID 获取
-GET http://localhost:3000/questions/285acd89-b79b-49e6-8425-5d60d5101233
 ```
 
 **响应示例**:
@@ -641,14 +551,18 @@ GET http://localhost:3000/questions/285acd89-b79b-49e6-8425-5d60d5101233
     "tags": ["vue", "lifecycle"],
     "question_markdown": "Vue 2.x 生命周期有哪些？分别做了什么？",
     "answer_simple_markdown": "beforeCreate → created → beforeMount → mounted...",
-    "answer_analysis_markdown": "- beforeCreate：实例刚初始化...",
+    "answer_analysis_markdown": "详细解析内容...",
     "files": {
-      "audio_simple": "q0001_285acd89_audio_simple.mp3",
-      "audio_question": "q0001_285acd89_audio_question.mp3",
-      "audio_analysis": "q0001_285acd89_audio_analysis.mp3",
-      "meta": "q0001_285acd89_meta.json"
+      "audio_simple": "path/to/audio_simple.mp3",
+      "audio_question": "path/to/audio_question.mp3",
+      "audio_analysis": "path/to/audio_analysis.mp3",
+      "meta": "path/to/meta.json"
     },
-    "subjectId": "64f1a2b3c4d5e6f789012345"
+    "subjectId": "64f1a2b3c4d5e6f789012345",
+    "question_length": 25,
+    "simple_answer_length": 120,
+    "detailed_analysis_length": 500,
+    "created_at": "2023-09-01T10:00:00.000Z"
   },
   "message": "操作成功"
 }
@@ -657,11 +571,7 @@ GET http://localhost:3000/questions/285acd89-b79b-49e6-8425-5d60d5101233
 **错误响应**:
 
 ```
-{
-  "success": false,
-  "data": null,
-  "message": "题目不存在"
-}
+{"success": false, "data": null, "message": "题目不存在"}
 ```
 
 ---
@@ -690,7 +600,7 @@ Content-Type: application/json
 {
   "userId": "user123",
   "questionId": "64f1a2b3c4d5e6f789012346",
-  "action": "practiced"
+  "action": "favorited"
 }
 ```
 
@@ -1066,6 +976,98 @@ GET http://localhost:3000/user-actions/current-subject?userId=user123
 - 如果用户没有选择科目记录，将返回第一个启用的默认科目
 - 如果没有启用的科目，将返回 `null`
 
+### 3.8 用户登录
+
+**接口地址**: `POST /user-actions/login`
+
+**接口描述**: 用户登录，获取用户身份认证信息和token
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| username | string | body | 是 | 用户名 |
+| password | string | body | 是 | 密码 |
+
+**请求示例**:
+
+```
+POST http://localhost:3000/user-actions/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": {
+    "userId": "64f1a2b3c4d5e6f789012347",
+    "username": "admin",
+    "role": "admin",
+    "token": "token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456",
+    "lastLogin": "2021-06-01T10:00:00.000Z"
+  },
+  "message": "登录成功"
+}
+```
+
+**错误响应**:
+
+```
+{"success": false, "data": null, "message": "缺少必要参数: username 和 password"}
+```
+
+或
+
+```
+{"success": false, "data": null, "message": "用户名或密码错误"}
+```
+
+### 3.9 用户退出登录
+
+**接口地址**: `POST /user-actions/logout`
+
+**接口描述**: 用户退出登录，清除用户身份认证信息
+
+**请求参数**:
+| 参数名 | 类型 | 位置 | 必填 | 说明 |
+|--------|------|------|------|------|
+| userId | string | body | 是 | 用户ID |
+| token | string | body | 是 | 用户登录时获取的token |
+
+**请求示例**:
+
+```
+POST http://localhost:3000/user-actions/logout
+Content-Type: application/json
+
+{
+  "userId": "64f1a2b3c4d5e6f789012347",
+  "token": "token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"
+}
+```
+
+**响应示例**:
+
+```
+{
+  "success": true,
+  "data": null,
+  "message": "退出登录成功"
+}
+```
+
+**错误响应**:
+
+```
+{"success": false, "data": null, "message": "缺少必要参数: userId 和 token"}
+```
+
 ---
 
 ## 4. 状态码说明
@@ -1150,14 +1152,33 @@ GET http://localhost:3000/user-actions/current-subject?userId=user123
 }
 ```
 
-### 6.3 用户行为 (UserAction)
+### 6.3 用户 (User)
+
+```
+{
+  "_id": "ObjectId",
+  "username": "用户名",
+  "password": "密码",
+  "role": "用户角色",
+  "isEnabled": true,
+  "lastLogin": "Date",
+  "createdAt": "Date",
+  "updatedAt": "Date"
+}
+```
+
+### 6.4 用户行为 (UserAction)
 
 ```
 {
   "_id": "ObjectId",
   "userId": "用户ID",
   "questionId": "ObjectId",
-  "action": "favorited|deleted|selected_subject",
+  "action": "favorited|deleted|selected_subject|login|logout",
+  "username": "用户名",
+  "role": "用户角色",
+  "token": "认证token",
+  "logoutTime": "Date",
   "createdAt": "Date",
   "updatedAt": "Date"
 }
@@ -1318,6 +1339,38 @@ async function getCurrentSubject(userId) {
   const result = await response.json();
   console.log(result);
 }
+
+// 用户登录
+async function login(username, password) {
+  const response = await fetch("http://localhost:3000/user-actions/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
+  const result = await response.json();
+  console.log(result);
+}
+
+// 用户退出登录
+async function logout(userId, token) {
+  const response = await fetch("http://localhost:3000/user-actions/logout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      token
+    }),
+  });
+  const result = await response.json();
+  console.log(result);
+}
 ```
 
 ### 8.2 cURL 示例
@@ -1365,11 +1418,32 @@ curl -X GET "http://localhost:3000/user-actions/current-subject?userId=user123"
 
 # 获取用户统计
 curl -X GET "http://localhost:3000/user-actions/stats?userId=user123"
+
+# 用户登录
+curl -X POST http://localhost:3000/user-actions/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user123","password":"123456"}'
+
+# 用户退出登录
+curl -X POST http://localhost:3000/user-actions/logout \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"64f1a2b3c4d5e6f789012347","token":"token_64f1a2b3c4d5e6f789012347_1622544000000_abc123def456"}'
 ```
 
 ---
 
 ## 9. 更新日志
+
+### v1.7.0 (2024-05-24)
+
+- 新增用户登录接口 (`POST /user-actions/login`)
+- 新增用户退出登录接口 (`POST /user-actions/logout`)
+- 新增users集合，支持用户身份认证
+- 更新userActionController.js中的login和logout函数，使用users集合进行认证
+- 更新用户行为数据模型，支持用户登录状态管理
+- 在示例代码中添加登录和退出登录的使用示例
+- 在API文档中添加用户(User)数据模型定义
+- 在init-db.js中添加users集合初始化和默认管理员用户创建
 
 ### v1.6.0 (2024-05-23)
 

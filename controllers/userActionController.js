@@ -147,77 +147,69 @@ exports.undeleteQuestions = async (req, res, next) => {
 // - limit: 每页数量，默认为20
 exports.getDeletedQuestions = async (req, res, next) => {
   const { userId = "guest", page = 1, limit = 20 } = req.body;
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const skip = (pageNum - 1) * limitNum;
 
   try {
     const db = await connectDB();
-
-    // Calculate pagination
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Get total count of deleted questions for this user
+    
+    // 获取用户删除的题目ID列表
+    const deletedActions = await db.collection("userActions").find({
+      userId,
+      action: "deleted"
+    }, {
+      projection: { questionId: 1 },
+      limit: limitNum,
+      skip: skip
+    }).toArray();
+    
+    // 获取总条数用于分页
     const total = await db.collection("userActions").countDocuments({
       userId,
-      action: "deleted",
+      action: "deleted"
     });
-
-    // Get paginated deleted questions with question details
-    const pipeline = [
-      { $match: { userId, action: "deleted" } },
-      { $sort: { createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limitNum },
-      {
-        $lookup: {
-          from: "questions",
-          localField: "questionId",
-          foreignField: "_id",
-          as: "questionDetails",
-        },
-      },
-      {
-        $unwind: "$questionDetails",
-      },
-      { $project: {
-          _id: 1,
-          userId: 1,
-          questionId: 1,
-          action: 1,
-          createdAt: 1,
-          "questionDetails._id": 1,
-          "questionDetails.id": 1,
-          "questionDetails.type": 1,
-          "questionDetails.difficulty": 1,
-          "questionDetails.tags": 1,
-          "questionDetails.question_markdown": 1,
-          "questionDetails.answer_simple_markdown": 1,
-          "questionDetails.answer_detail_markdown": 1,
-          "questionDetails.answer_analysis_markdown": 1,
-          "questionDetails.audioKey": 1,
-          "questionDetails.files": 1,
-          "questionDetails.subjectId": 1,
-        },
-      },
-    ];
-
-    const deletedQuestions = await db
-      .collection("userActions")
-      .aggregate(pipeline)
-      .toArray();
-
+    
+    // 如果没有删除的题目，直接返回空列表
+    if (deletedActions.length === 0) {
+      return res.json(ApiResponse.success({
+        questions: [],
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+          hasNext: pageNum * limitNum < total,
+          hasPrev: pageNum > 1
+        }
+      }));
+    }
+    
+    // 获取题目详情
+    const questionIds = deletedActions.map(action => action.questionId);
+    const questions = await db.collection("questions").find({
+      _id: { $in: questionIds }
+    }).toArray();
+    
+    // 构建返回结果，包含用户操作信息和题目详情
     const result = {
-      questions: deletedQuestions,
+      questions: deletedActions.map(action => {
+        const questionDetails = questions.find(q => q._id.toString() === action.questionId.toString());
+        return {
+          ...action,
+          questionDetails
+        };
+      }),
       pagination: {
         page: pageNum,
         limit: limitNum,
         total,
         totalPages: Math.ceil(total / limitNum),
         hasNext: pageNum * limitNum < total,
-        hasPrev: pageNum > 1,
-      },
+        hasPrev: pageNum > 1
+      }
     };
-
+    
     res.json(ApiResponse.success(result));
   } catch (err) {
     next(err);
@@ -312,6 +304,121 @@ exports.getCurrentSubject = async (req, res, next) => {
     });
     
     res.json(ApiResponse.success(subject || null));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /user-actions/login
+// 接口用途：用户登录
+// 使用场景：用户登录应用时调用此接口
+// 参数说明：
+// - username: 用户名，必填
+// - password: 密码，必填
+exports.login = async (req, res, next) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: username 和 password"));
+  }
+  
+  try {
+    const db = await connectDB();
+    
+    // 从users集合中查找用户
+    const user = await db.collection("users").findOne({
+      username,
+      isEnabled: true
+    });
+    
+    if (!user) {
+      return res.status(401).json(ApiResponse.error("用户名或密码错误"));
+    }
+    
+    // 验证密码（注意：实际生产环境应使用加密密码验证，如bcrypt）
+    // 当前版本使用简单比较，后续应升级为密码加密方案
+    const isValidPassword = password === user.password;
+    
+    if (!isValidPassword) {
+      return res.status(401).json(ApiResponse.error("用户名或密码错误"));
+    }
+    
+    // 生成登录token
+    const now = new Date();
+    const token = `token_${user._id}_${now.getTime()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // 更新用户的登录信息
+    await db.collection("users").updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          lastLogin: now,
+          updatedAt: now
+        }
+      }
+    );
+    
+    // 记录登录行为
+    await db.collection("userActions").insertOne({
+      userId: user._id.toString(),
+      action: "login",
+      username: user.username,
+      role: user.role,
+      token,
+      lastLogin: now,
+      createdAt: now
+    });
+    
+    // 返回用户信息和token
+    res.json(ApiResponse.success({
+      userId: user._id.toString(),
+      username: user.username,
+      role: user.role,
+      token,
+      lastLogin: now
+    }, "登录成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /user-actions/logout
+// 接口用途：用户退出登录
+// 使用场景：用户退出应用时调用此接口
+// 参数说明：
+// - userId: 用户ID，必填
+// - token: 用户登录token，必填
+exports.logout = async (req, res, next) => {
+  const { userId, token } = req.body;
+  
+  if (!userId || !token) {
+    return res.status(400).json(ApiResponse.error("缺少必要参数: userId 和 token"));
+  }
+  
+  try {
+    const db = await connectDB();
+    
+    const now = new Date();
+    
+    // 记录用户退出登录行为
+    await db.collection("userActions").insertOne({
+      userId,
+      action: "logout",
+      token,
+      logoutTime: now,
+      createdAt: now
+    });
+    
+    // 清除用户的登录token
+    await db.collection("userActions").updateMany(
+      { userId, action: "login", token },
+      {
+        $unset: { token: "" },
+        $set: { logoutTime: now }
+      }
+    );
+    
+    res.json(ApiResponse.success(null, "退出登录成功"));
   } catch (err) {
     next(err);
   }

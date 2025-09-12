@@ -140,6 +140,24 @@ async function initDB() {
       console.log("⚠️  没有加载到题目数据，未插入题目");
     }
 
+    // 5. 创建用户集合和添加默认用户
+    const usersCollection = db.collection('users');
+    
+    // 检查是否已存在默认的管理员用户
+    const existingAdmin = await usersCollection.findOne({ username: 'admin' });
+    if (!existingAdmin) {
+      // 添加默认的管理员用户（密码：admin123，实际环境应使用加密密码）
+      await usersCollection.insertOne({
+        username: 'admin',
+        password: 'admin123', // 注意：实际环境必须使用加密存储
+        role: 'admin',
+        isEnabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      console.log('👤 已添加默认管理员用户');
+    }
+    
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）
 
     // 创建索引以提高查询性能
@@ -154,6 +172,10 @@ async function initDB() {
       .createIndex({ subjectId: 1, difficulty: 1 });
     await db.collection("questions").createIndex({ subjectId: 1, tags: 1 });
 
+    // 为用户集合创建索引
+    await usersCollection.createIndex({ username: 1 }, { unique: true });
+    await usersCollection.createIndex({ role: 1 });
+    
     // 为用户行为集合创建索引
     await db.collection("userActions").createIndex({ userId: 1 });
     await db.collection("userActions").createIndex({ questionId: 1 });
