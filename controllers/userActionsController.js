@@ -152,51 +152,64 @@ exports.getDeletedQuestions = async (req, res, next) => {
 
   try {
     const db = await connectDB();
-    
+
     // 获取用户删除的题目ID列表
-    const deletedActions = await db.collection("userActions").find({
-      userId,
-      action: "deleted"
-    }, {
-      projection: { questionId: 1 },
-      limit: limitNum,
-      skip: skip
-    }).toArray();
-    
+    const deletedActions = await db
+      .collection("userActions")
+      .find(
+        {
+          userId,
+          action: "deleted",
+        },
+        {
+          projection: { questionId: 1 },
+          limit: limitNum,
+          skip: skip,
+        }
+      )
+      .toArray();
+
     // 获取总条数用于分页
     const total = await db.collection("userActions").countDocuments({
       userId,
-      action: "deleted"
+      action: "deleted",
     });
-    
+
     // 如果没有删除的题目，直接返回空列表
     if (deletedActions.length === 0) {
-      return res.json(ApiResponse.success({
-        questions: [],
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum),
-          hasNext: pageNum * limitNum < total,
-          hasPrev: pageNum > 1
-        }
-      }));
+      return res.json(
+        ApiResponse.success({
+          questions: [],
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum),
+            hasNext: pageNum * limitNum < total,
+            hasPrev: pageNum > 1,
+          },
+        })
+      );
     }
-    
+
     // 获取题目详情
-    const questionIds = deletedActions.map(action => action.questionId);
-    const questions = await db.collection("questions").find({
-      _id: { $in: questionIds }
-    }).toArray();
-    
+    const questionIds = deletedActions.map((action) => action.questionId);
+    const questions = await db
+      .collection("questions")
+      .find({
+        _id: { $in: questionIds },
+      })
+      .toArray();
+
     // 构建返回结果，包含用户操作信息和题目详情
     const result = {
-      questions: deletedActions.map(action => {
-        const questionDetails = questions.find(q => q._id.toString() === action.questionId.toString());
+      questions: deletedActions.map((action) => {
+        const questionDetails = questions.find(
+          (q) => q._id.toString() === action.questionId.toString()
+        );
         return {
           ...action,
-          questionDetails
+          questionDetails,
         };
       }),
       pagination: {
@@ -205,10 +218,10 @@ exports.getDeletedQuestions = async (req, res, next) => {
         total,
         totalPages: Math.ceil(total / limitNum),
         hasNext: pageNum * limitNum < total,
-        hasPrev: pageNum > 1
-      }
+        hasPrev: pageNum > 1,
+      },
     };
-    
+
     res.json(ApiResponse.success(result));
   } catch (err) {
     next(err);
@@ -230,42 +243,50 @@ exports.selectSubject = async (req, res, next) => {
 
   try {
     const db = await connectDB();
-    
+
     // 首先验证科目是否存在
     const subject = await db.collection("subjects").findOne({
-      _id: new ObjectId(subjectId)
+      _id: new ObjectId(subjectId),
     });
-    
+
     if (!subject) {
       return res.status(404).json(ApiResponse.error("科目不存在"));
     }
-    
+
     // 更新或插入用户选择的科目记录
     const result = await db.collection("userActions").updateOne(
       {
         userId,
-        action: "selected_subject"
+        action: "selected_subject",
       },
       {
         $set: {
           subjectId: new ObjectId(subjectId),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         $setOnInsert: {
-          createdAt: new Date()
-        }
+          createdAt: new Date(),
+        },
       },
       {
-        upsert: true
+        upsert: true,
       }
     );
-    
-    const message = result.upsertedCount > 0 ? "科目选择记录创建成功" : "科目选择记录更新成功";
-    res.json(ApiResponse.success({
-      userId,
-      subjectId,
-      subjectName: subject.name
-    }, message));
+
+    const message =
+      result.upsertedCount > 0
+        ? "科目选择记录创建成功"
+        : "科目选择记录更新成功";
+    res.json(
+      ApiResponse.success(
+        {
+          userId,
+          subjectId,
+          subjectName: subject.name,
+        },
+        message
+      )
+    );
   } catch (err) {
     next(err);
   }
@@ -281,28 +302,186 @@ exports.getCurrentSubject = async (req, res, next) => {
 
   try {
     const db = await connectDB();
-    
+
     // 获取用户选择的科目记录
-    const userAction = await db.collection("userActions").findOne(
-      { userId, action: "selected_subject" },
-      { sort: { updatedAt: -1 } }
-    );
-    
+    const userAction = await db
+      .collection("userActions")
+      .findOne(
+        { userId, action: "selected_subject" },
+        { sort: { updatedAt: -1 } }
+      );
+
     if (!userAction) {
       // 如果没有选择记录，返回默认科目（第一个启用的科目）
       const defaultSubject = await db.collection("subjects").findOne({
-        isEnabled: true
+        isEnabled: true,
       });
-      
+
       return res.json(ApiResponse.success(defaultSubject || null));
     }
-    
+
     // 获取科目详情
     const subject = await db.collection("subjects").findOne({
-      _id: userAction.subjectId
+      _id: userAction.subjectId,
     });
-    
+
     res.json(ApiResponse.success(subject || null));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /user-actions/set-audio-preferences
+// 接口用途：设置用户的音频播放偏好
+// 使用场景：用户在设置中调整音频播放相关的参数
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+// - audioContents: 播放内容选择数组，可选值为"audio_answer_detail"（精简答案）和"audio_answer_simple"（扩展答案），可以多选
+// - playbackSpeed: 播放速度，默认1.0，范围0.5-3.0
+// - loopMode: 循环方式，可选值为"list"（列表循环）和"single"（单个题目循环）,none（不循环）
+// - loopSettings: 列表循环模式下的设置
+//   - audio_answer_simple: 精简答案的循环次数
+//   - audio_answer_detail: 扩展答案的循环次数
+exports.setAudioPreferences = async (req, res, next) => {
+  const {
+    userId = "guest",
+    audioContents = ["audio_answer_simple"], // 默认播放精简答案
+    playbackSpeed = 1.0,
+    loopMode = "list",
+    loopSettings = {
+      audio_answer_simple: 1,
+      audio_answer_detail: 1,
+    },
+  } = req.body;
+
+  // 验证音频内容选择
+  const validAudioContents = ["audio_answer_detail", "audio_answer_simple"];
+  if (
+    !Array.isArray(audioContents) ||
+    audioContents.length === 0 ||
+    !audioContents.every((content) => validAudioContents.includes(content))
+  ) {
+    return res.status(400).json(ApiResponse.error("无效的音频内容选择"));
+  }
+
+  // 验证播放速度
+  const speed = parseFloat(playbackSpeed);
+  if (isNaN(speed) || speed < 0.5 || speed > 3.0) {
+    return res.status(400).json(ApiResponse.error("播放速度必须在0.5-3.0之间"));
+  }
+
+  // 验证循环模式
+  const validLoopModes = ["list", "single"];
+  if (!validLoopModes.includes(loopMode)) {
+    return res.status(400).json(ApiResponse.error("无效的循环方式"));
+  }
+
+  // 验证循环设置
+  if (loopMode === "list") {
+    const simpleCount = parseInt(loopSettings.audio_answer_simple) || 1;
+    const detailCount = parseInt(loopSettings.audio_answer_detail) || 1;
+    if (
+      simpleCount < 1 ||
+      simpleCount > 10 ||
+      detailCount < 1 ||
+      detailCount > 10
+    ) {
+      return res.status(400).json(ApiResponse.error("循环次数必须在1-10之间"));
+    }
+  }
+
+  try {
+    const db = await connectDB();
+    const now = new Date();
+
+    // 更新或插入用户的音频播放偏好
+    const result = await db.collection("userActions").updateOne(
+      {
+        userId,
+        action: "audio_preferences",
+      },
+      {
+        $set: {
+          audioContents,
+          playbackSpeed: speed,
+          loopMode,
+          loopSettings,
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          createdAt: now,
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+
+    const message =
+      result.upsertedCount > 0
+        ? "音频播放偏好设置成功"
+        : "音频播放偏好更新成功";
+    res.json(
+      ApiResponse.success(
+        {
+          userId,
+          audioContents,
+          playbackSpeed: speed,
+          loopMode,
+          loopSettings,
+        },
+        message
+      )
+    );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /user-actions/audio-preferences
+// 接口用途：获取用户的音频播放偏好
+// 使用场景：应用启动时加载用户上次设置的音频播放偏好
+// 参数说明：
+// - userId: 用户ID，默认为"guest"
+exports.getAudioPreferences = async (req, res, next) => {
+  const { userId = "guest" } = req.query;
+
+  try {
+    const db = await connectDB();
+
+    // 获取用户的音频播放偏好
+    const preferences = await db
+      .collection("userActions")
+      .findOne(
+        { userId, action: "audio_preferences" },
+        { sort: { updatedAt: -1 } }
+      );
+
+    // 如果没有偏好设置，返回默认设置
+    if (!preferences) {
+      const defaultPreferences = {
+        userId,
+        audioContents: ["audio_answer_simple"],
+        playbackSpeed: 1.0,
+        loopMode: "list",
+        loopSettings: {
+          audio_answer_simple: 1,
+          audio_answer_detail: 1,
+        },
+      };
+      return res.json(ApiResponse.success(defaultPreferences));
+    }
+
+    // 构建返回结果，排除不需要的字段
+    const result = {
+      userId: preferences.userId,
+      audioContents: preferences.audioContents,
+      playbackSpeed: preferences.playbackSpeed,
+      loopMode: preferences.loopMode,
+      loopSettings: preferences.loopSettings,
+    };
+
+    res.json(ApiResponse.success(result));
   } catch (err) {
     next(err);
   }

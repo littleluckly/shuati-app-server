@@ -8,7 +8,9 @@ const {
   undeleteQuestions,
   getDeletedQuestions,
   selectSubject,
-  getCurrentSubject
+  getCurrentSubject,
+  setAudioPreferences,
+  getAudioPreferences
 } = require("../controllers/userActionsController");
 
 // 记录用户对题目的操作行为（收藏/删除）
@@ -31,5 +33,11 @@ router.post("/select-subject", selectSubject);
 
 // 获取用户当前选择的科目
 router.get("/current-subject", getCurrentSubject);
+
+// 设置用户的音频播放偏好
+router.post("/set-audio-preferences", setAudioPreferences);
+
+// 获取用户的音频播放偏好
+router.get("/audio-preferences", getAudioPreferences);
 
 module.exports = router;
