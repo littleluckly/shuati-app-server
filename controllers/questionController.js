@@ -40,6 +40,7 @@ exports.getRandomQuestion = async (req, res, next) => {
 // - subjectId: 科目ID，可选，请求体参数
 // - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
 // - tags: 标签数组，可选，请求体参数
+// - searchKeyword: 搜索关键字，可选，请求体参数，模糊匹配题目相关markdown字段
 // - page: 页码，默认为1，请求体参数
 // - limit: 每页数量，默认为20，请求体参数
 // - userId: 用户ID，默认为"guest"，用于过滤用户已删除的题目，请求体参数
@@ -48,6 +49,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     subjectId,
     difficulty,
     tags = [],
+    searchKeyword,
     page = 1,
     limit = 20,
     userId = "guest",
@@ -76,6 +78,17 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     if (tags && tags.length > 0) {
       // 处理新数据格式中标签可能是字符串数组的情况
       filter.tags = { $in: tags };
+    }
+
+    // 添加搜索关键字模糊匹配
+    if (searchKeyword && searchKeyword.trim()) {
+      const keyword = searchKeyword.trim();
+      filter.$or = [
+        { question_markdown: { $regex: keyword, $options: 'i' } },
+        { answer_simple_markdown: { $regex: keyword, $options: 'i' } },
+        { answer_detail_markdown: { $regex: keyword, $options: 'i' } },
+        { answer_analysis_markdown: { $regex: keyword, $options: 'i' } }
+      ];
     }
 
     // 计算分页参数
@@ -145,6 +158,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
         subjectId,
         difficulty,
         tags,
+        searchKeyword,
       },
     };
 
