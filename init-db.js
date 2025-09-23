@@ -3,9 +3,12 @@ const { MongoClient } = require("mongodb");
 const fs = require("fs");
 const path = require("path");
 
-// 👇 修改成你的数据库信息
-const uri = "mongodb://127.0.0.1:27017";
+// 从环境变量中获取MongoDB连接URI
+// 如果环境变量未设置，使用默认值（适用于开发环境）
+const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
 // 注意：密码中有 @ 要写成 %40
+// 注意：生产环境中应在环境变量中设置包含认证信息的连接字符串
+// 例如：mongodb://username:password@host:port/database
 
 // 读取 questions-meta 目录下的 JSON 文件
 function loadQuestionsFromMeta() {
@@ -141,33 +144,33 @@ async function initDB() {
     }
 
     // 5. 创建用户集合和添加默认用户
-    const usersCollection = db.collection('users');
-    
+    const usersCollection = db.collection("users");
+
     // 检查是否已存在默认的管理员用户
-    const existingAdmin = await usersCollection.findOne({ username: 'admin' });
+    const existingAdmin = await usersCollection.findOne({ username: "admin" });
     if (!existingAdmin) {
       // 添加默认的管理员用户（密码：admin123，实际环境应使用加密密码）
       await usersCollection.insertOne({
-        username: 'admin',
-        password: 'admin123', // 注意：实际环境必须使用加密存储
-        role: 'admin',
-        email: 'admin@example.com', // 默认管理员邮箱
+        username: "admin",
+        password: "admin123", // 注意：实际环境必须使用加密存储
+        role: "admin",
+        email: "admin@example.com", // 默认管理员邮箱
         isEnabled: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
-      console.log('👤 已添加默认管理员用户');
+      console.log("👤 已添加默认管理员用户");
     } else {
       // 如果存在管理员用户但没有email字段，添加email字段
       if (!existingAdmin.email) {
         await usersCollection.updateOne(
           { _id: existingAdmin._id },
-          { $set: { email: 'admin@example.com', updatedAt: new Date() } }
+          { $set: { email: "admin@example.com", updatedAt: new Date() } }
         );
-        console.log('🔧 已更新管理员用户，添加email字段');
+        console.log("🔧 已更新管理员用户，添加email字段");
       }
     }
-    
+
     // 其他集合会在用户使用时自动创建（如 userActions, userSettings）
 
     // 创建索引以提高查询性能
@@ -185,7 +188,7 @@ async function initDB() {
     // 为用户集合创建索引
     await usersCollection.createIndex({ username: 1 }, { unique: true });
     await usersCollection.createIndex({ role: 1 });
-    
+
     // 为用户行为集合创建索引
     await db.collection("userActions").createIndex({ userId: 1 });
     await db.collection("userActions").createIndex({ questionId: 1 });
