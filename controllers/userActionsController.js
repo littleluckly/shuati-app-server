@@ -250,7 +250,7 @@ exports.selectSubject = async (req, res, next) => {
     });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 更新或插入用户选择的科目记录

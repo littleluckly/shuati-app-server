@@ -84,10 +84,10 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     if (searchKeyword && searchKeyword.trim()) {
       const keyword = searchKeyword.trim();
       filter.$or = [
-        { question_markdown: { $regex: keyword, $options: 'i' } },
-        { answer_simple_markdown: { $regex: keyword, $options: 'i' } },
-        { answer_detail_markdown: { $regex: keyword, $options: 'i' } },
-        { answer_analysis_markdown: { $regex: keyword, $options: 'i' } }
+        { question_markdown: { $regex: keyword, $options: "i" } },
+        { answer_simple_markdown: { $regex: keyword, $options: "i" } },
+        { answer_detail_markdown: { $regex: keyword, $options: "i" } },
+        { answer_analysis_markdown: { $regex: keyword, $options: "i" } },
       ];
     }
 
@@ -311,27 +311,33 @@ exports.getRandomQuestionList = async (req, res, next) => {
 // - subjectId: 科目ID，必填，请求体参数
 exports.createQuestion = async (req, res, next) => {
   try {
-    const { 
-      type, 
-      difficulty, 
-      tags = [], 
-      category, 
-      question_markdown, 
-      answer_simple_markdown, 
-      answer_detail_markdown = '', 
-      answer_analysis_markdown = '', 
-      files = {}, 
-      subjectId 
+    const {
+      type,
+      difficulty,
+      tags = [],
+      category,
+      question_markdown,
+      answer_simple_markdown,
+      answer_detail_markdown = "",
+      answer_analysis_markdown = "",
+      files = {},
+      subjectId,
     } = req.body;
 
     // 验证必填字段
-    if (!type || !difficulty || !question_markdown || !answer_simple_markdown || !subjectId) {
-      return res.status(400).json(ApiResponse.error('缺少必要的题目信息'));
+    if (
+      !type ||
+      !difficulty ||
+      !question_markdown ||
+      !answer_simple_markdown ||
+      !subjectId
+    ) {
+      return res.status(400).json(ApiResponse.error("缺少必要的题目信息"));
     }
 
     // 连接数据库
     const db = await connectDB();
-    
+
     // 创建题目对象
     const question = {
       _id: new ObjectId(),
@@ -351,16 +357,16 @@ exports.createQuestion = async (req, res, next) => {
       detailed_analysis_length: answer_analysis_markdown.length,
       isEnabled: true,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     // 插入题目
-    const result = await db.collection('questions').insertOne(question);
-    
+    const result = await db.collection("questions").insertOne(question);
+
     if (result.insertedId) {
-      res.status(201).json(ApiResponse.success(question, '题目创建成功'));
+      res.status(201).json(ApiResponse.success(question, "题目创建成功"));
     } else {
-      res.status(500).json(ApiResponse.error('题目创建失败'));
+      res.status(500).json(ApiResponse.error("题目创建失败"));
     }
   } catch (err) {
     next(err);
@@ -375,28 +381,28 @@ exports.createQuestion = async (req, res, next) => {
 // - 其他参数与新增题目相同
 exports.updateQuestion = async (req, res, next) => {
   const { id } = req.params;
-  
+
   try {
-    const { 
-      type, 
-      difficulty, 
-      tags, 
-      category, 
-      question_markdown, 
-      answer_simple_markdown, 
-      answer_detail_markdown, 
-      answer_analysis_markdown, 
-      files, 
-      subjectId, 
-      isEnabled 
+    const {
+      type,
+      difficulty,
+      tags,
+      category,
+      question_markdown,
+      answer_simple_markdown,
+      answer_detail_markdown,
+      answer_analysis_markdown,
+      files,
+      subjectId,
+      isEnabled,
     } = req.body;
 
     // 连接数据库
     const db = await connectDB();
-    
+
     // 创建更新对象
     const updateData = {};
-    
+
     if (type !== undefined) updateData.type = type;
     if (difficulty !== undefined) updateData.difficulty = difficulty;
     if (tags !== undefined) updateData.tags = tags;
@@ -409,7 +415,8 @@ exports.updateQuestion = async (req, res, next) => {
       updateData.answer_simple_markdown = answer_simple_markdown;
       updateData.simple_answer_length = answer_simple_markdown.length;
     }
-    if (answer_detail_markdown !== undefined) updateData.answer_detail_markdown = answer_detail_markdown;
+    if (answer_detail_markdown !== undefined)
+      updateData.answer_detail_markdown = answer_detail_markdown;
     if (answer_analysis_markdown !== undefined) {
       updateData.answer_analysis_markdown = answer_analysis_markdown;
       updateData.detailed_analysis_length = answer_analysis_markdown.length;
@@ -417,37 +424,40 @@ exports.updateQuestion = async (req, res, next) => {
     if (files !== undefined) updateData.files = files;
     if (subjectId !== undefined) updateData.subjectId = new ObjectId(subjectId);
     if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
-    
+
     // 更新时间
     updateData.updatedAt = new Date();
 
     // 查找并更新题目
     let updatedQuestion;
-    
+
     // 首先尝试使用ObjectId查询
+    let result;
     try {
       const objectId = new ObjectId(id);
-      const result = await db.collection('questions').findOneAndUpdate(
-        { _id: objectId },
-        { $set: updateData },
-        { returnDocument: 'after' }
-      );
-      updatedQuestion = result.value;
+      result = await db
+        .collection("questions")
+        .findOneAndUpdate(
+          { _id: objectId },
+          { $set: updateData },
+          { returnDocument: "after" }
+        );
     } catch (objectIdError) {
       // 如果ObjectId查询失败，尝试使用自定义id字段查询
-      const result = await db.collection('questions').findOneAndUpdate(
-        { id: id },
-        { $set: updateData },
-        { returnDocument: 'after' }
-      );
-      updatedQuestion = result.value;
+      result = await db
+        .collection("questions")
+        .findOneAndUpdate(
+          { id: id },
+          { $set: updateData },
+          { returnDocument: "after" }
+        );
     }
 
-    if (!updatedQuestion) {
-      return res.status(404).json(ApiResponse.error('题目不存在'));
+    if (!result) {
+      return res.status(500).json(ApiResponse.error("题目不存在"));
     }
 
-    res.json(ApiResponse.success(updatedQuestion, '题目更新成功'));
+    res.json(ApiResponse.success(result, "题目更新成功"));
   } catch (err) {
     next(err);
   }
@@ -475,7 +485,7 @@ exports.getQuestionById = async (req, res, next) => {
     }
 
     if (!question) {
-      return res.status(404).json(ApiResponse.error("题目不存在"));
+      return res.status(500).json(ApiResponse.error("题目不存在"));
     }
 
     res.json(ApiResponse.success(question));

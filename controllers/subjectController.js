@@ -82,7 +82,7 @@ exports.getSubjectById = async (req, res, next) => {
       .collection("subjects")
       .findOne({ _id: new ObjectId(id) });
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
     res.json(ApiResponse.success(subject));
   } catch (err) {
@@ -106,7 +106,7 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 获取该科目下所有题目的标签统计
@@ -118,11 +118,13 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
         { $unwind: { path: "$tags", preserveNullAndEmptyArrays: false } },
         {
           $group: {
-            _id: { $cond: {
-              if: { $isArray: "$tags" },
-              then: "$tags",
-              else: ["$tags"]
-            }},
+            _id: {
+              $cond: {
+                if: { $isArray: "$tags" },
+                then: "$tags",
+                else: ["$tags"],
+              },
+            },
             count: { $sum: 1 },
           },
         },
@@ -172,7 +174,7 @@ exports.addUserTag = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 添加用户标签到 userTags 数组（如果不存在）
@@ -189,7 +191,7 @@ exports.addUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     res.json(ApiResponse.success(null, "标签添加成功"));
@@ -214,7 +216,7 @@ exports.getAllTagsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 返回该科目的所有标签（包含name和type字段）
@@ -251,7 +253,7 @@ exports.updateUserTag = async (req, res, next) => {
     });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 检查要修改的标签是否存在于 userTags 中（不是内置标签）
@@ -278,7 +280,7 @@ exports.updateUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json(ApiResponse.error("标签不存在"));
+      return res.status(500).json(ApiResponse.error("标签不存在"));
     }
 
     // 同时更新该科目下所有题目中的对应标签
@@ -318,7 +320,7 @@ exports.deleteUserTag = async (req, res, next) => {
     });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 检查要删除的标签是否存在于 userTags 中（不是内置标签）
@@ -343,7 +345,7 @@ exports.deleteUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 同时从该科目下所有题目中移除对应标签
@@ -381,7 +383,7 @@ exports.getDifficultyLevelsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 获取该科目下所有题目的难度统计
@@ -426,7 +428,7 @@ exports.getDifficultyOptionsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
-      return res.status(404).json(ApiResponse.error("科目不存在"));
+      return res.status(500).json(ApiResponse.error("科目不存在"));
     }
     res.json(ApiResponse.success(subject.difficultyLevels));
   } catch (err) {
