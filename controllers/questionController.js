@@ -295,6 +295,164 @@ exports.getRandomQuestionList = async (req, res, next) => {
   }
 };
 
+// POST /questions - 新增题目
+// 接口用途：创建新的题目
+// 使用场景：在管理后台添加新的题目
+// 参数说明：
+// - type: 题目类型，必填，请求体参数
+// - difficulty: 难度等级，必填，请求体参数
+// - tags: 标签数组，可选，请求体参数
+// - category: 分类字段，可选，请求体参数
+// - question_markdown: 题目内容，必填，请求体参数
+// - answer_simple_markdown: 简单答案，必填，请求体参数
+// - answer_detail_markdown: 详细答案，可选，请求体参数
+// - answer_analysis_markdown: 答案分析，可选，请求体参数
+// - files: 文件路径，可选，请求体参数
+// - subjectId: 科目ID，必填，请求体参数
+exports.createQuestion = async (req, res, next) => {
+  try {
+    const { 
+      type, 
+      difficulty, 
+      tags = [], 
+      category, 
+      question_markdown, 
+      answer_simple_markdown, 
+      answer_detail_markdown = '', 
+      answer_analysis_markdown = '', 
+      files = {}, 
+      subjectId 
+    } = req.body;
+
+    // 验证必填字段
+    if (!type || !difficulty || !question_markdown || !answer_simple_markdown || !subjectId) {
+      return res.status(400).json(ApiResponse.error('缺少必要的题目信息'));
+    }
+
+    // 连接数据库
+    const db = await connectDB();
+    
+    // 创建题目对象
+    const question = {
+      _id: new ObjectId(),
+      id: `q-${Date.now()}`, // 生成自定义ID
+      type,
+      difficulty,
+      tags,
+      category,
+      question_markdown,
+      answer_simple_markdown,
+      answer_detail_markdown,
+      answer_analysis_markdown,
+      files,
+      subjectId: new ObjectId(subjectId),
+      question_length: question_markdown.length,
+      simple_answer_length: answer_simple_markdown.length,
+      detailed_analysis_length: answer_analysis_markdown.length,
+      isEnabled: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // 插入题目
+    const result = await db.collection('questions').insertOne(question);
+    
+    if (result.insertedId) {
+      res.status(201).json(ApiResponse.success(question, '题目创建成功'));
+    } else {
+      res.status(500).json(ApiResponse.error('题目创建失败'));
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /questions/:id - 编辑题目
+// 接口用途：更新题目的信息
+// 使用场景：在管理后台编辑已有的题目
+// 参数说明：
+// - id: 题目ID，路径参数
+// - 其他参数与新增题目相同
+exports.updateQuestion = async (req, res, next) => {
+  const { id } = req.params;
+  
+  try {
+    const { 
+      type, 
+      difficulty, 
+      tags, 
+      category, 
+      question_markdown, 
+      answer_simple_markdown, 
+      answer_detail_markdown, 
+      answer_analysis_markdown, 
+      files, 
+      subjectId, 
+      isEnabled 
+    } = req.body;
+
+    // 连接数据库
+    const db = await connectDB();
+    
+    // 创建更新对象
+    const updateData = {};
+    
+    if (type !== undefined) updateData.type = type;
+    if (difficulty !== undefined) updateData.difficulty = difficulty;
+    if (tags !== undefined) updateData.tags = tags;
+    if (category !== undefined) updateData.category = category;
+    if (question_markdown !== undefined) {
+      updateData.question_markdown = question_markdown;
+      updateData.question_length = question_markdown.length;
+    }
+    if (answer_simple_markdown !== undefined) {
+      updateData.answer_simple_markdown = answer_simple_markdown;
+      updateData.simple_answer_length = answer_simple_markdown.length;
+    }
+    if (answer_detail_markdown !== undefined) updateData.answer_detail_markdown = answer_detail_markdown;
+    if (answer_analysis_markdown !== undefined) {
+      updateData.answer_analysis_markdown = answer_analysis_markdown;
+      updateData.detailed_analysis_length = answer_analysis_markdown.length;
+    }
+    if (files !== undefined) updateData.files = files;
+    if (subjectId !== undefined) updateData.subjectId = new ObjectId(subjectId);
+    if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+    
+    // 更新时间
+    updateData.updatedAt = new Date();
+
+    // 查找并更新题目
+    let updatedQuestion;
+    
+    // 首先尝试使用ObjectId查询
+    try {
+      const objectId = new ObjectId(id);
+      const result = await db.collection('questions').findOneAndUpdate(
+        { _id: objectId },
+        { $set: updateData },
+        { returnDocument: 'after' }
+      );
+      updatedQuestion = result.value;
+    } catch (objectIdError) {
+      // 如果ObjectId查询失败，尝试使用自定义id字段查询
+      const result = await db.collection('questions').findOneAndUpdate(
+        { id: id },
+        { $set: updateData },
+        { returnDocument: 'after' }
+      );
+      updatedQuestion = result.value;
+    }
+
+    if (!updatedQuestion) {
+      return res.status(404).json(ApiResponse.error('题目不存在'));
+    }
+
+    res.json(ApiResponse.success(updatedQuestion, '题目更新成功'));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /questions/:id - 根据ID获取题目详情
 // 接口用途：根据题目ID获取题目详细信息
 // 使用场景：在题目详情页面展示题目的完整内容
