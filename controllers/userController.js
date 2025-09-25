@@ -105,7 +105,7 @@ exports.login = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(401).json(ApiResponse.error("用户名或密码错误"));
+      return res.status(500).json(ApiResponse.error("用户名或密码错误"));
     }
 
     // 验证密码（注意：实际生产环境应使用加密密码验证，如bcrypt）
@@ -113,7 +113,7 @@ exports.login = async (req, res, next) => {
     const isValidPassword = password === user.password;
 
     if (!isValidPassword) {
-      return res.status(401).json(ApiResponse.error("用户名或密码错误"));
+      return res.status(500).json(ApiResponse.error("用户名或密码错误"));
     }
 
     // 生成登录token
@@ -244,7 +244,7 @@ exports.getUserInfo = async (req, res, next) => {
 
     if (!loginRecord) {
       return res
-        .status(401)
+        .status(500)
         .json(ApiResponse.error("无效的登录状态，请重新登录"));
     }
 

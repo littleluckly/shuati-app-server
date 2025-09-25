@@ -3,17 +3,229 @@ const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
 
+// POST /subjects
+// 接口用途：新增科目
+// 使用场景：在后台管理系统添加新的科目
+// 参数说明：
+// - name: 科目名称，请求体参数
+// - description: 科目描述，请求体参数
+// - tags: 科目标签列表，请求体参数
+// - difficultyLevels: 难度等级列表，请求体参数
+exports.createSubject = async (req, res, next) => {
+  try {
+    const { name, description, tags = [], difficultyLevels = [] } = req.body;
+
+    if (!name) {
+      return res.status(400).json(ApiResponse.error("科目名称不能为空"));
+    }
+
+    const db = await connectDB();
+
+    // 检查科目名称是否已存在
+    const existingSubject = await db
+      .collection("subjects")
+      .findOne({ name, isDeleted: { $ne: true } });
+
+    if (existingSubject) {
+      return res.status(400).json(ApiResponse.error("科目名称已存在"));
+    }
+
+    const newSubject = {
+      name,
+      description: description || "",
+      tags,
+      difficultyLevels,
+      isEnabled: true,
+      isDeleted: false,
+      userTags: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const result = await db.collection("subjects").insertOne(newSubject);
+
+    res
+      .status(201)
+      .json(
+        ApiResponse.success(
+          { _id: result.insertedId, ...newSubject },
+          "科目创建成功"
+        )
+      );
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /subjects/:id
+// 接口用途：修改科目信息
+// 使用场景：在后台管理系统更新科目的基本信息
+// 参数说明：
+// - id: 科目ID，路径参数
+// - name: 科目名称，请求体参数
+// - description: 科目描述，请求体参数
+// - tags: 科目标签列表，请求体参数
+// - difficultyLevels: 难度等级列表，请求体参数
+// - isEnabled: 是否启用，请求体参数
+exports.updateSubject = async (req, res, next) => {
+  const { id } = req.params;
+  const { name, description, tags, difficultyLevels, isEnabled } = req.body;
+
+  try {
+    const db = await connectDB();
+    const objectId = new ObjectId(id);
+
+    // 验证科目是否存在
+    const subject = await db
+      .collection("subjects")
+      .findOne({ _id: objectId, isDeleted: { $ne: true } });
+
+    if (!subject) {
+      return res.status(500).json(ApiResponse.error("科目不存在"));
+    }
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (tags !== undefined) updateData.tags = tags;
+    if (difficultyLevels !== undefined)
+      updateData.difficultyLevels = difficultyLevels;
+    if (isEnabled !== undefined) updateData.isEnabled = isEnabled;
+    updateData.updatedAt = new Date();
+
+    // 如果更新了名称，检查新名称是否已存在
+    if (name && name !== subject.name) {
+      const existingSubject = await db
+        .collection("subjects")
+        .findOne({ name, isDeleted: { $ne: true }, _id: { $ne: objectId } });
+
+      if (existingSubject) {
+        return res.status(400).json(ApiResponse.error("科目名称已存在"));
+      }
+    }
+
+    const result = await db
+      .collection("subjects")
+      .updateOne({ _id: objectId }, { $set: updateData });
+
+    if (result.matchedCount === 0) {
+      return res.status(500).json(ApiResponse.error("科目不存在"));
+    }
+
+    // 获取更新后的科目信息
+    const updatedSubject = await db
+      .collection("subjects")
+      .findOne({ _id: objectId });
+
+    res.json(ApiResponse.success(updatedSubject, "科目更新成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /subjects/:id
+// 接口用途：删除科目（软删除）
+// 使用场景：在后台管理系统删除科目
+// 参数说明：
+// - id: 科目ID，路径参数
+exports.deleteSubject = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const db = await connectDB();
+    const objectId = new ObjectId(id);
+
+    // 验证科目是否存在
+    const subject = await db
+      .collection("subjects")
+      .findOne({ _id: objectId, isDeleted: { $ne: true } });
+
+    if (!subject) {
+      return res.status(500).json(ApiResponse.error("科目不存在"));
+    }
+
+    // 执行软删除，将isDeleted标记为true
+    const result = await db.collection("subjects").updateOne(
+      { _id: objectId },
+      {
+        $set: {
+          isDeleted: true,
+          isEnabled: false,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(500).json(ApiResponse.error("科目不存在"));
+    }
+
+    res.json(ApiResponse.success(null, "科目删除成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /subjects
 // 接口用途：获取所有启用状态的科目列表
 // 使用场景：在应用首页或科目选择页面展示所有可用科目
 exports.getSubjects = async (req, res, next) => {
   try {
     const db = await connectDB();
-    const subjects = await db
+    console.log("req.query", req.query);
+    // 获取分页参数和搜索参数，设置默认值
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50); // 限制最大每页50条
+    const skip = (page - 1) * limit;
+    const searchKeyword = req.query.searchKeyword || "";
+
+    // 构建查询条件
+    const query = {
+      isEnabled: true,
+      isDeleted: { $ne: true },
+    };
+
+    // 如果有搜索关键词，添加模糊搜索条件
+    if (searchKeyword) {
+      console.log("searchKeyword", searchKeyword);
+      query.$or = [
+        { name: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目名称
+        { code: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目code
+      ];
+    }
+
+    // 查询当前页的数据
+    const subjectsData = await db
       .collection("subjects")
-      .find({ isEnabled: true })
+      .find(query)
+      .skip(skip)
+      .limit(limit)
       .toArray();
-    res.json(ApiResponse.success(subjects));
+
+    // 获取总记录数
+    const total = await db.collection("subjects").countDocuments(query);
+
+    // 计算总页数
+    const totalPages = Math.ceil(total / limit);
+
+    // 构建响应数据，保持与题目列表接口格式一致
+    const responseData = {
+      subjects: subjectsData,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+      filters: {
+        isEnabled: true,
+        searchKeyword: searchKeyword || undefined, // 只有有值时才返回
+      },
+    };
+
+    res.json(ApiResponse.success(responseData));
   } catch (err) {
     next(err);
   }
@@ -25,9 +237,39 @@ exports.getSubjects = async (req, res, next) => {
 exports.getAllSubjects = async (req, res, next) => {
   try {
     const db = await connectDB();
+
+    // 获取分页参数和搜索参数，设置默认值
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50); // 限制最大每页50条
+    const skip = (page - 1) * limit;
+    const searchKeyword = req.query.searchKeyword || "";
+
+    // 构建查询条件
+    const query = {
+      isEnabled: true,
+      isDeleted: { $ne: true },
+    };
+
+    // 如果有搜索关键词，添加模糊搜索条件
+    if (searchKeyword) {
+      query.$or = [
+        { name: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目名称
+        { code: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目code
+      ];
+    }
+
+    // 获取总记录数
+    const total = await db.collection("subjects").countDocuments(query);
+
+    // 计算总页数
+    const totalPages = Math.ceil(total / limit);
+
+    // 查询当前页的数据
     const subjects = await db
       .collection("subjects")
-      .find({ isEnabled: true })
+      .find(query)
+      .skip(skip)
+      .limit(limit)
       .toArray();
 
     // 为每个科目获取题目统计信息
@@ -63,7 +305,24 @@ exports.getAllSubjects = async (req, res, next) => {
       })
     );
 
-    res.json(ApiResponse.success(subjectsWithStats));
+    // 构建响应数据，保持与题目列表接口格式一致
+    const responseData = {
+      subjects: subjectsWithStats,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+      filters: {
+        isEnabled: true,
+        searchKeyword: searchKeyword || undefined, // 只有有值时才返回
+      },
+    };
+
+    res.json(ApiResponse.success(responseData));
   } catch (err) {
     next(err);
   }
