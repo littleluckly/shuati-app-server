@@ -11,7 +11,7 @@ const ApiResponse = require("../utils/ApiResponse");
 // - difficulty: 难度等级，可选，查询参数
 exports.getRandomQuestion = async (req, res, next) => {
   const { subjectId, difficulty } = req.query;
-  const filter = { isEnabled: true };
+  const filter = { isEnabled: true, isDeleted: { $ne: true } };
 
   if (subjectId) filter.subjectId = new ObjectId(subjectId);
   if (difficulty) filter.difficulty = difficulty;
@@ -60,6 +60,9 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     const filter = {};
 
     // 构建过滤条件
+    filter.isEnabled = true;
+    filter.isDeleted = { $ne: true };
+    
     if (subjectId) {
       filter.subjectId = new ObjectId(subjectId);
     }
@@ -200,6 +203,8 @@ exports.getRandomQuestionList = async (req, res, next) => {
 
     const baseFilter = {
       subjectId: new ObjectId(subjectId),
+      isEnabled: true,
+      isDeleted: { $ne: true }
     };
 
     // 按难度分布获取题目
@@ -356,6 +361,7 @@ exports.createQuestion = async (req, res, next) => {
       simple_answer_length: answer_simple_markdown.length,
       detailed_analysis_length: answer_analysis_markdown.length,
       isEnabled: true,
+      isDeleted: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -463,6 +469,49 @@ exports.updateQuestion = async (req, res, next) => {
   }
 };
 
+// DELETE /questions/:id - 软删除题目
+// 接口用途：标记题目为已删除，但不物理删除
+// 使用场景：在管理后台删除不需要的题目
+// 参数说明：
+// - id: 题目ID，路径参数，支持ObjectId或自定义ID
+exports.deleteQuestion = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const db = await connectDB();
+    let result;
+
+    // 首先尝试使用ObjectId查询
+    try {
+      const objectId = new ObjectId(id);
+      result = await db
+        .collection("questions")
+        .findOneAndUpdate(
+          { _id: objectId, isDeleted: { $ne: true } },
+          { $set: { isDeleted: true, updatedAt: new Date() } },
+          { returnDocument: "after" }
+        );
+    } catch (objectIdError) {
+      // 如果ObjectId查询失败，尝试使用自定义id字段查询
+      result = await db
+        .collection("questions")
+        .findOneAndUpdate(
+          { id: id, isDeleted: { $ne: true } },
+          { $set: { isDeleted: true, updatedAt: new Date() } },
+          { returnDocument: "after" }
+        );
+    }
+
+    if (!result) {
+      return res.status(404).json(ApiResponse.error("题目不存在或已被删除"));
+    }
+
+    res.json(ApiResponse.success(result, "题目删除成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /questions/:id - 根据ID获取题目详情
 // 接口用途：根据题目ID获取题目详细信息
 // 使用场景：在题目详情页面展示题目的完整内容
@@ -478,10 +527,10 @@ exports.getQuestionById = async (req, res, next) => {
     // 首先尝试使用ObjectId查询
     try {
       const objectId = new ObjectId(id);
-      question = await db.collection("questions").findOne({ _id: objectId });
+      question = await db.collection("questions").findOne({ _id: objectId, isDeleted: { $ne: true } });
     } catch (objectIdError) {
       // 如果ObjectId查询失败，尝试使用自定义id字段查询
-      question = await db.collection("questions").findOne({ id: id });
+      question = await db.collection("questions").findOne({ id: id, isDeleted: { $ne: true } });
     }
 
     if (!question) {
