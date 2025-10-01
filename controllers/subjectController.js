@@ -8,12 +8,13 @@ const { ObjectId } = require("mongodb");
 // 使用场景：在后台管理系统添加新的科目
 // 参数说明：
 // - name: 科目名称，请求体参数
+// - code: 科目代码，请求体参数
 // - description: 科目描述，请求体参数
 // - tags: 科目标签列表，请求体参数
 // - difficultyLevels: 难度等级列表，请求体参数
 exports.createSubject = async (req, res, next) => {
   try {
-    const { name, description, tags = [], difficultyLevels = [] } = req.body;
+    const { name, code, description, tags = [], difficultyLevels = [] } = req.body;
 
     if (!name) {
       return res.status(400).json(ApiResponse.error("科目名称不能为空"));
@@ -30,8 +31,20 @@ exports.createSubject = async (req, res, next) => {
       return res.status(400).json(ApiResponse.error("科目名称已存在"));
     }
 
+    // 检查科目代码是否已存在（如果提供了code）
+    if (code) {
+      const existingCode = await db
+        .collection("subjects")
+        .findOne({ code, isDeleted: { $ne: true } });
+
+      if (existingCode) {
+        return res.status(400).json(ApiResponse.error("科目代码已存在"));
+      }
+    }
+
     const newSubject = {
       name,
+      code: code || "",
       description: description || "",
       tags,
       difficultyLevels,
@@ -63,13 +76,14 @@ exports.createSubject = async (req, res, next) => {
 // 参数说明：
 // - id: 科目ID，路径参数
 // - name: 科目名称，请求体参数
+// - code: 科目代码，请求体参数
 // - description: 科目描述，请求体参数
 // - tags: 科目标签列表，请求体参数
 // - difficultyLevels: 难度等级列表，请求体参数
 // - isEnabled: 是否启用，请求体参数
 exports.updateSubject = async (req, res, next) => {
   const { id } = req.params;
-  const { name, description, tags, difficultyLevels, isEnabled } = req.body;
+  const { name, code, description, tags, difficultyLevels, isEnabled } = req.body;
 
   try {
     const db = await connectDB();
@@ -86,6 +100,7 @@ exports.updateSubject = async (req, res, next) => {
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
+    if (code !== undefined) updateData.code = code;
     if (description !== undefined) updateData.description = description;
     if (tags !== undefined) updateData.tags = tags;
     if (difficultyLevels !== undefined)
@@ -101,6 +116,17 @@ exports.updateSubject = async (req, res, next) => {
 
       if (existingSubject) {
         return res.status(400).json(ApiResponse.error("科目名称已存在"));
+      }
+    }
+
+    // 如果更新了代码，检查新代码是否已存在
+    if (code && code !== subject.code) {
+      const existingCode = await db
+        .collection("subjects")
+        .findOne({ code, isDeleted: { $ne: true }, _id: { $ne: objectId } });
+
+      if (existingCode) {
+        return res.status(400).json(ApiResponse.error("科目代码已存在"));
       }
     }
 
