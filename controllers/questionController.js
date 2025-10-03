@@ -41,6 +41,8 @@ exports.getRandomQuestion = async (req, res, next) => {
 // - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
 // - tags: 标签数组，可选，请求体参数
 // - searchKeyword: 搜索关键字，可选，请求体参数，模糊匹配题目相关markdown字段
+// - hasAudioFiles: 是否有音频文件，可选，请求体参数，根据files字段是否为空判断
+// - isEnabled: 是否启用，可选，请求体参数，根据isEnabled字段过滤题目
 // - page: 页码，默认为1，请求体参数
 // - limit: 每页数量，默认为20，请求体参数
 // - userId: 用户ID，默认为"guest"，用于过滤用户已删除的题目，请求体参数
@@ -50,6 +52,8 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     difficulty,
     tags = [],
     searchKeyword,
+    hasAudioFiles,
+    isEnabled,
     page = 1,
     limit = 20,
     userId = "guest",
@@ -60,8 +64,18 @@ exports.getFilteredQuestionList = async (req, res, next) => {
     const filter = {};
 
     // 构建过滤条件
-    filter.isEnabled = true;
     filter.isDeleted = { $ne: true };
+    
+    // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
+    if (isEnabled !== undefined) {
+      // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
+      if (isEnabled === null) {
+        // 不添加isEnabled到过滤条件中
+      } else {
+        filter.isEnabled = isEnabled;
+      }
+    }
+    // 不传递isEnabled参数时，默认显示所有题目，不添加过滤条件
     
     if (subjectId) {
       filter.subjectId = new ObjectId(subjectId);
@@ -92,6 +106,24 @@ exports.getFilteredQuestionList = async (req, res, next) => {
         { answer_detail_markdown: { $regex: keyword, $options: "i" } },
         { answer_analysis_markdown: { $regex: keyword, $options: "i" } },
       ];
+    }
+
+    // 添加音频文件过滤条件
+    if (hasAudioFiles !== undefined) {
+      if (hasAudioFiles) {
+        // 有音频文件：files字段存在且不为空对象
+        filter.$and = [
+          { files: { $exists: true } },
+          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } }
+        ];
+      } else {
+        // 无音频文件：files字段不存在或为空对象
+        filter.$or = [
+          { files: { $exists: false } },
+          { files: {} },
+          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } }
+        ];
+      }
     }
 
     // 计算分页参数
@@ -179,8 +211,9 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 // - total: 题目总数，默认为10，请求体参数
 // - difficultyConfig: 难度分布配置，可选，请求体参数
 // - tagConfig: 标签配置，可选，请求体参数
+// - isEnabled: 是否启用，可选，请求体参数，根据isEnabled字段过滤题目
 exports.getRandomQuestionList = async (req, res, next) => {
-  const { subjectId, total = 10, difficultyConfig, tagConfig } = req.body;
+  const { subjectId, total = 10, difficultyConfig, tagConfig, isEnabled } = req.body;
 
   // 默认难度分布配置
   const defaultDifficultyConfig = {
@@ -203,9 +236,19 @@ exports.getRandomQuestionList = async (req, res, next) => {
 
     const baseFilter = {
       subjectId: new ObjectId(subjectId),
-      isEnabled: true,
       isDeleted: { $ne: true }
     };
+    
+    // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
+    if (isEnabled !== undefined) {
+      // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
+      if (isEnabled === null) {
+        // 不添加isEnabled到过滤条件中
+      } else {
+        baseFilter.isEnabled = isEnabled;
+      }
+    }
+    // 不传递isEnabled参数时，默认显示所有题目，不添加过滤条件
 
     // 按难度分布获取题目
     for (const [difficulty, ratio] of Object.entries(finalDifficultyConfig)) {
@@ -507,6 +550,99 @@ exports.deleteQuestion = async (req, res, next) => {
     }
 
     res.json(ApiResponse.success(result, "题目删除成功"));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /questions/export - 导出题目
+// 接口用途：导出符合条件的题目数据为JSON格式
+// 使用场景：在管理后台导出题目数据用于备份或迁移
+// 参数说明：
+// - subjectId: 科目ID，可选，请求体参数
+// - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
+// - tags: 标签数组，可选，请求体参数
+// - searchKeyword: 搜索关键字，可选，请求体参数，模糊匹配题目相关markdown字段
+// - hasAudioFiles: 是否有音频文件，可选，请求体参数，根据files字段是否为空判断
+exports.exportQuestions = async (req, res, next) => {
+  const {
+    subjectId,
+    difficulty,
+    tags = [],
+    searchKeyword,
+    hasAudioFiles,
+  } = req.body;
+
+  try {
+    const db = await connectDB();
+    const filter = {};
+
+    // 构建过滤条件
+    filter.isEnabled = true;
+    filter.isDeleted = { $ne: true };
+    
+    if (subjectId) {
+      filter.subjectId = new ObjectId(subjectId);
+    }
+
+    if (difficulty) {
+      if (Array.isArray(difficulty)) {
+        // 如果是数组，使用 $in 操作符
+        filter.difficulty = { $in: difficulty };
+      } else {
+        // 如果是单个值，直接匹配
+        filter.difficulty = difficulty;
+      }
+    }
+
+    // 支持多个标签过滤
+    if (tags && tags.length > 0) {
+      // 处理新数据格式中标签可能是字符串数组的情况
+      filter.tags = { $in: tags };
+    }
+
+    // 添加搜索关键字模糊匹配
+    if (searchKeyword && searchKeyword.trim()) {
+      const keyword = searchKeyword.trim();
+      filter.$or = [
+        { question_markdown: { $regex: keyword, $options: "i" } },
+        { answer_simple_markdown: { $regex: keyword, $options: "i" } },
+        { answer_detail_markdown: { $regex: keyword, $options: "i" } },
+        { answer_analysis_markdown: { $regex: keyword, $options: "i" } },
+      ];
+    }
+
+    // 添加音频文件过滤条件
+    if (hasAudioFiles !== undefined) {
+      if (hasAudioFiles) {
+        // 有音频文件：files字段存在且不为空对象
+        filter.$and = [
+          { files: { $exists: true } },
+          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } }
+        ];
+      } else {
+        // 无音频文件：files字段不存在或为空对象
+        filter.$or = [
+          { files: { $exists: false } },
+          { files: {} },
+          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } }
+        ];
+      }
+    }
+
+    // 获取所有符合条件的题目数据
+    const questions = await db
+      .collection("questions")
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    // 设置响应头，提示浏览器下载文件
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="questions-export.json"');
+
+    // 返回题目数据
+    res.json(questions);
   } catch (err) {
     next(err);
   }
