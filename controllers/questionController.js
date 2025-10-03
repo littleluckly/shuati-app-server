@@ -564,6 +564,7 @@ exports.deleteQuestion = async (req, res, next) => {
 // - tags: 标签数组，可选，请求体参数
 // - searchKeyword: 搜索关键字，可选，请求体参数，模糊匹配题目相关markdown字段
 // - hasAudioFiles: 是否有音频文件，可选，请求体参数，根据files字段是否为空判断
+// - isEnabled: 是否启用，可选，请求体参数，根据isEnabled字段过滤题目
 exports.exportQuestions = async (req, res, next) => {
   const {
     subjectId,
@@ -571,6 +572,7 @@ exports.exportQuestions = async (req, res, next) => {
     tags = [],
     searchKeyword,
     hasAudioFiles,
+    isEnabled,
   } = req.body;
 
   try {
@@ -578,8 +580,18 @@ exports.exportQuestions = async (req, res, next) => {
     const filter = {};
 
     // 构建过滤条件
-    filter.isEnabled = true;
     filter.isDeleted = { $ne: true };
+    
+    // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
+    if (isEnabled !== undefined) {
+      // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
+      if (isEnabled === null) {
+        // 不添加isEnabled到过滤条件中
+      } else {
+        filter.isEnabled = isEnabled;
+      }
+    }
+    // 不传递isEnabled参数时，默认显示所有题目，不添加过滤条件
     
     if (subjectId) {
       filter.subjectId = new ObjectId(subjectId);
