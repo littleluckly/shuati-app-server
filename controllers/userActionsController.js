@@ -1,6 +1,7 @@
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
+const logHelper = require('../utils/logWithEndpoint');
 
 // POST /user-actions
 // 接口用途：记录用户对题目的操作行为（收藏/删除）
@@ -14,10 +15,12 @@ exports.recordUserAction = async (req, res, next) => {
   const validActions = ["favorited", "deleted"];
 
   if (!questionId || !action) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数", { userId, questionId, action });
     return res.status(400).json(ApiResponse.error("缺少必要参数"));
   }
 
   if (!validActions.includes(action)) {
+    logHelper.error(req, "【参数验证错误】无效的行为类型", { action });
     return res.status(400).json(ApiResponse.error("无效的行为类型"));
   }
 
@@ -31,8 +34,10 @@ exports.recordUserAction = async (req, res, next) => {
   try {
     const db = await connectDB();
     await db.collection("userActions").insertOne(actionDoc);
+    logHelper.info(req, "【业务逻辑信息】用户行为记录成功", { userId, questionId, action });
     res.json(ApiResponse.success(null, "记录成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】记录用户行为失败", err);
     next(err);
   }
 };
@@ -61,8 +66,10 @@ exports.getUserStats = async (req, res, next) => {
       result.total += item.count;
     });
 
+    logHelper.info(req, "【业务逻辑信息】获取用户统计信息成功", { userId });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户统计信息失败", err);
     next(err);
   }
 };
@@ -77,6 +84,7 @@ exports.resetDeletedQuestions = async (req, res, next) => {
 
   // Only allow this endpoint in development environment
   if (process.env.NODE_ENV === "production") {
+    logHelper.error(req, "【业务逻辑错误】该接口仅在开发环境可用");
     return res
       .status(403)
       .json(ApiResponse.error("Forbidden: Development endpoint only"));
@@ -91,10 +99,12 @@ exports.resetDeletedQuestions = async (req, res, next) => {
       action: "deleted",
     });
 
+    logHelper.info(req, "【业务逻辑信息】成功重置用户删除的题目记录", { userId, resetCount: result.deletedCount });
     res.json(
       ApiResponse.success(null, `成功重置 ${result.deletedCount} 条删除记录`)
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】重置用户删除的题目记录失败", err);
     next(err);
   }
 };
@@ -112,6 +122,7 @@ exports.undeleteQuestions = async (req, res, next) => {
     !questionIds ||
     (Array.isArray(questionIds) && questionIds.length === 0)
   ) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: questionIds", { userId });
     return res.status(400).json(ApiResponse.error("缺少必要参数: questionIds"));
   }
 
@@ -129,10 +140,12 @@ exports.undeleteQuestions = async (req, res, next) => {
       questionId: { $in: questionIdArray.map((id) => new ObjectId(id)) },
     });
 
+    logHelper.info(req, "【业务逻辑信息】成功恢复用户删除的题目", { userId, restoredCount: result.deletedCount });
     res.json(
       ApiResponse.success(null, `成功恢复 ${result.deletedCount} 道题目`)
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】恢复用户删除的题目失败", err);
     next(err);
   }
 };
@@ -177,6 +190,7 @@ exports.getDeletedQuestions = async (req, res, next) => {
 
     // 如果没有删除的题目，直接返回空列表
     if (deletedActions.length === 0) {
+      logHelper.info(req, "【业务逻辑信息】用户没有删除的题目", { userId, page: pageNum, limit: limitNum });
       return res.json(
         ApiResponse.success({
           questions: [],
@@ -222,8 +236,10 @@ exports.getDeletedQuestions = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取用户删除的题目列表成功", { userId, page: pageNum, limit: limitNum, total });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户删除的题目列表失败", err);
     next(err);
   }
 };
@@ -238,6 +254,7 @@ exports.selectSubject = async (req, res, next) => {
   const { userId = "guest", subjectId } = req.body;
 
   if (!subjectId) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: subjectId", { userId });
     return res.status(400).json(ApiResponse.error("缺少必要参数: subjectId"));
   }
 
@@ -250,6 +267,7 @@ exports.selectSubject = async (req, res, next) => {
     });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { subjectId });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -273,10 +291,12 @@ exports.selectSubject = async (req, res, next) => {
       }
     );
 
-    const message =
+    const message = 
       result.upsertedCount > 0
         ? "科目选择记录创建成功"
         : "科目选择记录更新成功";
+        
+    logHelper.info(req, "【业务逻辑信息】用户选择科目成功", { userId, subjectId, subjectName: subject.name });
     res.json(
       ApiResponse.success(
         {
@@ -288,6 +308,7 @@ exports.selectSubject = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户选择科目失败", err);
     next(err);
   }
 };
@@ -316,7 +337,8 @@ exports.getCurrentSubject = async (req, res, next) => {
       const defaultSubject = await db.collection("subjects").findOne({
         isEnabled: true,
       });
-
+      
+      logHelper.info(req, "【业务逻辑信息】用户无科目选择记录，返回默认科目", { userId });
       return res.json(ApiResponse.success(defaultSubject || null));
     }
 
@@ -325,8 +347,10 @@ exports.getCurrentSubject = async (req, res, next) => {
       _id: userAction.subjectId,
     });
 
+    logHelper.info(req, "【业务逻辑信息】获取用户当前选择的科目成功", { userId, subjectId: userAction.subjectId.toString() });
     res.json(ApiResponse.success(subject || null));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户当前选择的科目失败", err);
     next(err);
   }
 };
@@ -361,18 +385,21 @@ exports.setAudioPreferences = async (req, res, next) => {
     audioContents.length === 0 ||
     !audioContents.every((content) => validAudioContents.includes(content))
   ) {
+    logHelper.error(req, "【参数验证错误】无效的音频内容选择", { userId, audioContents });
     return res.status(400).json(ApiResponse.error("无效的音频内容选择"));
   }
 
   // 验证播放速度
   const speed = parseFloat(playbackSpeed);
   if (isNaN(speed) || speed < 0.5 || speed > 3.0) {
+    logHelper.error(req, "【参数验证错误】播放速度必须在0.5-3.0之间", { userId, playbackSpeed });
     return res.status(400).json(ApiResponse.error("播放速度必须在0.5-3.0之间"));
   }
 
   // 验证循环模式
   const validLoopModes = ["list", "single"];
   if (!validLoopModes.includes(loopMode)) {
+    logHelper.error(req, "【参数验证错误】无效的循环方式", { userId, loopMode });
     return res.status(400).json(ApiResponse.error("无效的循环方式"));
   }
 
@@ -386,6 +413,7 @@ exports.setAudioPreferences = async (req, res, next) => {
       detailCount < 1 ||
       detailCount > 10
     ) {
+      logHelper.error(req, "【参数验证错误】循环次数必须在1-10之间", { userId, loopSettings });
       return res.status(400).json(ApiResponse.error("循环次数必须在1-10之间"));
     }
   }
@@ -417,10 +445,12 @@ exports.setAudioPreferences = async (req, res, next) => {
       }
     );
 
-    const message =
+    const message = 
       result.upsertedCount > 0
         ? "音频播放偏好设置成功"
         : "音频播放偏好更新成功";
+        
+    logHelper.info(req, "【业务逻辑信息】用户音频播放偏好设置成功", { userId, playbackSpeed: speed, loopMode });
     res.json(
       ApiResponse.success(
         {
@@ -434,6 +464,7 @@ exports.setAudioPreferences = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户音频播放偏好设置失败", err);
     next(err);
   }
 };
@@ -469,6 +500,8 @@ exports.getAudioPreferences = async (req, res, next) => {
           audio_answer_detail: 1,
         },
       };
+      
+      logHelper.info(req, "【业务逻辑信息】用户无音频播放偏好设置，返回默认设置", { userId });
       return res.json(ApiResponse.success(defaultPreferences));
     }
 
@@ -481,8 +514,10 @@ exports.getAudioPreferences = async (req, res, next) => {
       loopSettings: preferences.loopSettings,
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取用户音频播放偏好成功", { userId });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户音频播放偏好失败", err);
     next(err);
   }
 };

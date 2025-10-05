@@ -2,6 +2,7 @@
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
+const logHelper = require("../utils/logWithEndpoint");
 
 // POST /subjects
 // 接口用途：新增科目
@@ -14,9 +15,16 @@ const { ObjectId } = require("mongodb");
 // - difficultyLevels: 难度等级列表，请求体参数
 exports.createSubject = async (req, res, next) => {
   try {
-    const { name, code, description, tags = [], difficultyLevels = [] } = req.body;
+    const {
+      name,
+      code,
+      description,
+      tags = [],
+      difficultyLevels = [],
+    } = req.body;
 
     if (!name) {
+      logHelper.error(req, "【参数验证错误】科目名称不能为空");
       return res.status(400).json(ApiResponse.error("科目名称不能为空"));
     }
 
@@ -28,6 +36,7 @@ exports.createSubject = async (req, res, next) => {
       .findOne({ name, isDeleted: { $ne: true } });
 
     if (existingSubject) {
+      logHelper.error(req, "【业务逻辑错误】科目名称已存在", { name });
       return res.status(400).json(ApiResponse.error("科目名称已存在"));
     }
 
@@ -38,6 +47,7 @@ exports.createSubject = async (req, res, next) => {
         .findOne({ code, isDeleted: { $ne: true } });
 
       if (existingCode) {
+        logHelper.error(req, "【业务逻辑错误】科目代码已存在", { code });
         return res.status(400).json(ApiResponse.error("科目代码已存在"));
       }
     }
@@ -57,6 +67,10 @@ exports.createSubject = async (req, res, next) => {
 
     const result = await db.collection("subjects").insertOne(newSubject);
 
+    logHelper.info(req, "【业务逻辑信息】科目创建成功", {
+      subjectId: result.insertedId,
+      name,
+    });
     res
       .status(201)
       .json(
@@ -66,6 +80,7 @@ exports.createSubject = async (req, res, next) => {
         )
       );
   } catch (err) {
+    logHelper.error(req, "【系统错误】科目创建失败", err);
     next(err);
   }
 };
@@ -83,7 +98,8 @@ exports.createSubject = async (req, res, next) => {
 // - isEnabled: 是否启用，请求体参数
 exports.updateSubject = async (req, res, next) => {
   const { id } = req.params;
-  const { name, code, description, tags, difficultyLevels, isEnabled } = req.body;
+  const { name, code, description, tags, difficultyLevels, isEnabled } =
+    req.body;
 
   try {
     const db = await connectDB();
@@ -95,6 +111,7 @@ exports.updateSubject = async (req, res, next) => {
       .findOne({ _id: objectId, isDeleted: { $ne: true } });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -115,6 +132,7 @@ exports.updateSubject = async (req, res, next) => {
         .findOne({ name, isDeleted: { $ne: true }, _id: { $ne: objectId } });
 
       if (existingSubject) {
+        logHelper.error(req, "【业务逻辑错误】科目名称已存在", { name });
         return res.status(400).json(ApiResponse.error("科目名称已存在"));
       }
     }
@@ -126,6 +144,7 @@ exports.updateSubject = async (req, res, next) => {
         .findOne({ code, isDeleted: { $ne: true }, _id: { $ne: objectId } });
 
       if (existingCode) {
+        logHelper.error(req, "【业务逻辑错误】科目代码已存在", { code });
         return res.status(400).json(ApiResponse.error("科目代码已存在"));
       }
     }
@@ -135,6 +154,7 @@ exports.updateSubject = async (req, res, next) => {
       .updateOne({ _id: objectId }, { $set: updateData });
 
     if (result.matchedCount === 0) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -143,8 +163,13 @@ exports.updateSubject = async (req, res, next) => {
       .collection("subjects")
       .findOne({ _id: objectId });
 
+    logHelper.info(req, "【业务逻辑信息】科目更新成功", {
+      subjectId: id,
+      name: updatedSubject.name,
+    });
     res.json(ApiResponse.success(updatedSubject, "科目更新成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】科目更新失败", err);
     next(err);
   }
 };
@@ -167,6 +192,7 @@ exports.deleteSubject = async (req, res, next) => {
       .findOne({ _id: objectId, isDeleted: { $ne: true } });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -183,11 +209,17 @@ exports.deleteSubject = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】科目删除成功", {
+      subjectId: id,
+      name: subject.name,
+    });
     res.json(ApiResponse.success(null, "科目删除成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】科目删除失败", err);
     next(err);
   }
 };
@@ -198,7 +230,7 @@ exports.deleteSubject = async (req, res, next) => {
 exports.getSubjects = async (req, res, next) => {
   try {
     const db = await connectDB();
-    console.log("req.query", req.query);
+
     // 获取分页参数和搜索参数，设置默认值
     const page = parseInt(req.query.page) || 1;
     const limit = Math.min(parseInt(req.query.limit) || 10, 50); // 限制最大每页50条
@@ -213,7 +245,6 @@ exports.getSubjects = async (req, res, next) => {
 
     // 如果有搜索关键词，添加模糊搜索条件
     if (searchKeyword) {
-      console.log("searchKeyword", searchKeyword);
       query.$or = [
         { name: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目名称
         { code: { $regex: searchKeyword, $options: "i" } }, // 不区分大小写匹配科目code
@@ -251,8 +282,15 @@ exports.getSubjects = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取科目列表成功", {
+      page,
+      limit,
+      total,
+      searchKeyword,
+    });
     res.json(ApiResponse.success(responseData));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目列表失败", err);
     next(err);
   }
 };
@@ -348,8 +386,15 @@ exports.getAllSubjects = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取科目详细列表成功", {
+      page,
+      limit,
+      total,
+      searchKeyword,
+    });
     res.json(ApiResponse.success(responseData));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目详细列表失败", err);
     next(err);
   }
 };
@@ -367,10 +412,16 @@ exports.getSubjectById = async (req, res, next) => {
       .collection("subjects")
       .findOne({ _id: new ObjectId(id) });
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
+    logHelper.info(req, "【业务逻辑信息】获取科目详情成功", {
+      subjectId: id,
+      name: subject.name,
+    });
     res.json(ApiResponse.success(subject));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目详情失败", err);
     next(err);
   }
 };
@@ -391,6 +442,7 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -429,8 +481,13 @@ exports.getTagCountBySubjectId = async (req, res, next) => {
       count: tag.count,
     }));
 
+    logHelper.info(req, "【业务逻辑信息】获取科目标签统计成功", {
+      subjectId: id,
+      tagCount: tags.length,
+    });
     res.json(ApiResponse.success(tags));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目标签统计失败", err);
     next(err);
   }
 };
@@ -447,6 +504,7 @@ exports.addUserTag = async (req, res, next) => {
   const { name, type } = req.body;
 
   if (!name) {
+    logHelper.error(req, "【参数验证错误】标签名称不能为空");
     return res.status(400).json(ApiResponse.error("标签名称不能为空"));
   }
 
@@ -459,6 +517,7 @@ exports.addUserTag = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -476,11 +535,17 @@ exports.addUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】标签添加成功", {
+      subjectId: id,
+      tagName: name,
+    });
     res.json(ApiResponse.success(null, "标签添加成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】标签添加失败", err);
     next(err);
   }
 };
@@ -501,14 +566,20 @@ exports.getAllTagsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
     // 返回该科目的所有标签（包含name和type字段）
     const tags = subject.tags || [];
 
+    logHelper.info(req, "【业务逻辑信息】获取科目标签列表成功", {
+      subjectId: id,
+      tagCount: tags.length,
+    });
     res.json(ApiResponse.success(tags));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目标签列表失败", err);
     next(err);
   }
 };
@@ -526,6 +597,7 @@ exports.updateUserTag = async (req, res, next) => {
   const { newName, type } = req.body;
 
   if (!newName) {
+    logHelper.error(req, "【参数验证错误】新标签名称不能为空");
     return res.status(400).json(ApiResponse.error("新标签名称不能为空"));
   }
 
@@ -538,6 +610,7 @@ exports.updateUserTag = async (req, res, next) => {
     });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -546,6 +619,9 @@ exports.updateUserTag = async (req, res, next) => {
       subject.userTags && subject.userTags.some((tag) => tag.name === tagName);
 
     if (!isUserTag) {
+      logHelper.error(req, "【业务逻辑错误】只能修改用户自定义标签", {
+        tagName,
+      });
       return res.status(400).json(ApiResponse.error("只能修改用户自定义标签"));
     }
 
@@ -565,6 +641,7 @@ exports.updateUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
+      logHelper.error(req, "【业务逻辑错误】标签不存在", { tagName });
       return res.status(500).json(ApiResponse.error("标签不存在"));
     }
 
@@ -581,8 +658,14 @@ exports.updateUserTag = async (req, res, next) => {
       }
     );
 
+    logHelper.info(req, "【业务逻辑信息】标签修改成功", {
+      subjectId: id,
+      oldTagName: tagName,
+      newTagName: newName,
+    });
     res.json(ApiResponse.success(null, "标签修改成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】标签修改失败", err);
     next(err);
   }
 };
@@ -605,6 +688,7 @@ exports.deleteUserTag = async (req, res, next) => {
     });
 
     if (!subject) {
+      console.log("【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -613,6 +697,9 @@ exports.deleteUserTag = async (req, res, next) => {
       subject.userTags && subject.userTags.some((tag) => tag.name === tagName);
 
     if (!isUserTag) {
+      logHelper.error(req, "【业务逻辑错误】只能删除用户自定义标签", {
+        tagName,
+      });
       return res.status(400).json(ApiResponse.error("只能删除用户自定义标签"));
     }
 
@@ -630,6 +717,7 @@ exports.deleteUserTag = async (req, res, next) => {
     );
 
     if (result.matchedCount === 0) {
+      console.log("【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -646,8 +734,13 @@ exports.deleteUserTag = async (req, res, next) => {
       }
     );
 
+    logHelper.info(req, "【业务逻辑信息】标签删除成功", {
+      subjectId: id,
+      tagName,
+    });
     res.json(ApiResponse.success(null, "标签删除成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】标签删除失败", err);
     next(err);
   }
 };
@@ -668,6 +761,7 @@ exports.getDifficultyLevelsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
+      console.log("【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -691,8 +785,13 @@ exports.getDifficultyLevelsBySubjectId = async (req, res, next) => {
       value: level.count,
     }));
 
+    logHelper.info(req, "【业务逻辑信息】获取科目难度统计成功", {
+      subjectId: id,
+      levelCount: difficultyLevels.length,
+    });
     res.json(ApiResponse.success(difficultyLevels));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目难度统计失败", err);
     next(err);
   }
 };
@@ -713,10 +812,18 @@ exports.getDifficultyOptionsBySubjectId = async (req, res, next) => {
       .findOne({ _id: new ObjectId(id) });
 
     if (!subject) {
+      console.log("【业务逻辑错误】科目不存在", { id });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
+    logHelper.info(req, "【业务逻辑信息】获取科目难度选项成功", {
+      subjectId: id,
+      optionCount: subject.difficultyLevels
+        ? subject.difficultyLevels.length
+        : 0,
+    });
     res.json(ApiResponse.success(subject.difficultyLevels));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取科目难度选项失败", err);
     next(err);
   }
 };

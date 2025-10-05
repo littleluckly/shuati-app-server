@@ -2,6 +2,7 @@
 const { ObjectId } = require("mongodb");
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
+const logHelper = require("../utils/logWithEndpoint");
 
 // GET /questions/random
 // 接口用途：随机获取一道题目
@@ -24,11 +25,16 @@ exports.getRandomQuestion = async (req, res, next) => {
       .toArray();
 
     if (questions.length === 0) {
+      logHelper.info(req, "【业务逻辑信息】获取随机题目，暂无符合条件的题目", {
+        filter,
+      });
       return res.json(ApiResponse.success(null, "暂无符合条件的题目"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】获取随机题目成功");
     res.json(ApiResponse.success(questions[0]));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取随机题目失败", err);
     next(err);
   }
 };
@@ -65,7 +71,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 
     // 构建过滤条件
     filter.isDeleted = { $ne: true };
-    
+
     // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
     if (isEnabled !== undefined) {
       // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
@@ -76,7 +82,7 @@ exports.getFilteredQuestionList = async (req, res, next) => {
       }
     }
     // 不传递isEnabled参数时，默认显示所有题目，不添加过滤条件
-    
+
     if (subjectId) {
       filter.subjectId = new ObjectId(subjectId);
     }
@@ -114,14 +120,14 @@ exports.getFilteredQuestionList = async (req, res, next) => {
         // 有音频文件：files字段存在且不为空对象
         filter.$and = [
           { files: { $exists: true } },
-          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } }
+          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } },
         ];
       } else {
         // 无音频文件：files字段不存在或为空对象
         filter.$or = [
           { files: { $exists: false } },
           { files: {} },
-          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } }
+          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } },
         ];
       }
     }
@@ -197,8 +203,14 @@ exports.getFilteredQuestionList = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取过滤题目列表成功", {
+      page: pageNum,
+      limit: limitNum,
+      total,
+    });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取过滤题目列表失败", err);
     next(err);
   }
 };
@@ -213,7 +225,13 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 // - tagConfig: 标签配置，可选，请求体参数
 // - isEnabled: 是否启用，可选，请求体参数，根据isEnabled字段过滤题目
 exports.getRandomQuestionList = async (req, res, next) => {
-  const { subjectId, total = 10, difficultyConfig, tagConfig, isEnabled } = req.body;
+  const {
+    subjectId,
+    total = 10,
+    difficultyConfig,
+    tagConfig,
+    isEnabled,
+  } = req.body;
 
   // 默认难度分布配置
   const defaultDifficultyConfig = {
@@ -231,14 +249,15 @@ exports.getRandomQuestionList = async (req, res, next) => {
     let allQuestions = [];
 
     if (!subjectId) {
+      logHelper.error(req, "【参数验证错误】缺少科目ID参数");
       return res.status(400).json(ApiResponse.error("缺少科目 ID 参数"));
     }
 
     const baseFilter = {
       subjectId: new ObjectId(subjectId),
-      isDeleted: { $ne: true }
+      isDeleted: { $ne: true },
     };
-    
+
     // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
     if (isEnabled !== undefined) {
       // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
@@ -337,8 +356,13 @@ exports.getRandomQuestionList = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取随机题目列表成功", {
+      subjectId,
+      total: allQuestions.length,
+    });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取随机题目列表失败", err);
     next(err);
   }
 };
@@ -380,6 +404,13 @@ exports.createQuestion = async (req, res, next) => {
       !answer_simple_markdown ||
       !subjectId
     ) {
+      logHelper.error(req, "【参数验证错误】缺少必要的题目信息", {
+        type,
+        difficulty,
+        question_markdown,
+        answer_simple_markdown,
+        subjectId,
+      });
       return res.status(400).json(ApiResponse.error("缺少必要的题目信息"));
     }
 
@@ -413,11 +444,16 @@ exports.createQuestion = async (req, res, next) => {
     const result = await db.collection("questions").insertOne(question);
 
     if (result.insertedId) {
+      logHelper.info(req, "【业务逻辑信息】题目创建成功", {
+        questionId: result.insertedId,
+      });
       res.status(201).json(ApiResponse.success(question, "题目创建成功"));
     } else {
+      logHelper.error(req, "【业务逻辑错误】题目创建失败");
       res.status(500).json(ApiResponse.error("题目创建失败"));
     }
   } catch (err) {
+    logHelper.error(req, "【系统错误】创建题目失败", err);
     next(err);
   }
 };
@@ -503,11 +539,14 @@ exports.updateQuestion = async (req, res, next) => {
     }
 
     if (!result) {
+      logHelper.error(req, "【业务逻辑错误】题目不存在", { id });
       return res.status(500).json(ApiResponse.error("题目不存在"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】题目更新成功", { id });
     res.json(ApiResponse.success(result, "题目更新成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】更新题目失败", err);
     next(err);
   }
 };
@@ -546,11 +585,14 @@ exports.deleteQuestion = async (req, res, next) => {
     }
 
     if (!result) {
+      logHelper.error(req, "【业务逻辑错误】题目不存在或已被删除", { id });
       return res.status(404).json(ApiResponse.error("题目不存在或已被删除"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】题目删除成功", { id });
     res.json(ApiResponse.success(result, "题目删除成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】删除题目失败", err);
     next(err);
   }
 };
@@ -581,7 +623,7 @@ exports.exportQuestions = async (req, res, next) => {
 
     // 构建过滤条件
     filter.isDeleted = { $ne: true };
-    
+
     // 如果传入isEnabled参数，则根据参数值过滤；否则默认显示所有题目（启用和禁用的）
     if (isEnabled !== undefined) {
       // 当isEnabled为null时，不应用此过滤条件，返回所有题目（启用和禁用的）
@@ -592,7 +634,7 @@ exports.exportQuestions = async (req, res, next) => {
       }
     }
     // 不传递isEnabled参数时，默认显示所有题目，不添加过滤条件
-    
+
     if (subjectId) {
       filter.subjectId = new ObjectId(subjectId);
     }
@@ -630,14 +672,14 @@ exports.exportQuestions = async (req, res, next) => {
         // 有音频文件：files字段存在且不为空对象
         filter.$and = [
           { files: { $exists: true } },
-          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } }
+          { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } },
         ];
       } else {
         // 无音频文件：files字段不存在或为空对象
         filter.$or = [
           { files: { $exists: false } },
           { files: {} },
-          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } }
+          { $expr: { $eq: [{ $size: { $objectToArray: "$files" } }, 0] } },
         ];
       }
     }
@@ -649,13 +691,21 @@ exports.exportQuestions = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .toArray();
 
+    logHelper.info(req, "【业务逻辑信息】导出题目数据成功", {
+      count: questions.length,
+    });
+
     // 设置响应头，提示浏览器下载文件
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename="questions-export.json"');
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="questions-export.json"'
+    );
 
     // 返回题目数据
     res.json(questions);
   } catch (err) {
+    logHelper.error(req, "【系统错误】导出题目数据失败", err);
     next(err);
   }
 };
@@ -675,18 +725,25 @@ exports.getQuestionById = async (req, res, next) => {
     // 首先尝试使用ObjectId查询
     try {
       const objectId = new ObjectId(id);
-      question = await db.collection("questions").findOne({ _id: objectId, isDeleted: { $ne: true } });
+      question = await db
+        .collection("questions")
+        .findOne({ _id: objectId, isDeleted: { $ne: true } });
     } catch (objectIdError) {
       // 如果ObjectId查询失败，尝试使用自定义id字段查询
-      question = await db.collection("questions").findOne({ id: id, isDeleted: { $ne: true } });
+      question = await db
+        .collection("questions")
+        .findOne({ id: id, isDeleted: { $ne: true } });
     }
 
     if (!question) {
+      logHelper.error(req, "【业务逻辑错误】题目不存在", { id });
       return res.status(500).json(ApiResponse.error("题目不存在"));
     }
 
+    logHelper.info(req, "【业务逻辑信息】获取题目详情成功", { id });
     res.json(ApiResponse.success(question));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取题目详情失败", err);
     next(err);
   }
 };

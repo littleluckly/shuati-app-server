@@ -2,6 +2,7 @@
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const { ObjectId } = require("mongodb");
+const logHelper = require("../utils/logWithEndpoint");
 
 // POST /user-actions/register
 // 接口用途：用户注册
@@ -14,6 +15,11 @@ exports.register = async (req, res, next) => {
   const { username, password, email } = req.body;
 
   if (!username || !password || !email) {
+    logHelper.error(
+      req,
+      "【参数验证错误】缺少必要参数: username、password 和 email",
+      { username, email }
+    );
     return res
       .status(400)
       .json(ApiResponse.error("缺少必要参数: username、password 和 email"));
@@ -29,6 +35,7 @@ exports.register = async (req, res, next) => {
     });
 
     if (existingUserByUsername) {
+      logHelper.error(req, "【业务逻辑错误】用户名已存在", { username });
       return res.status(400).json(ApiResponse.error("用户名已存在"));
     }
 
@@ -38,6 +45,7 @@ exports.register = async (req, res, next) => {
     });
 
     if (existingUserByEmail) {
+      logHelper.error(req, "【业务逻辑错误】邮箱已被注册", { email });
       return res.status(400).json(ApiResponse.error("邮箱已被注册"));
     }
 
@@ -63,6 +71,10 @@ exports.register = async (req, res, next) => {
       createdAt: now,
     });
 
+    logHelper.info(req, "【业务逻辑信息】用户注册成功", {
+      userId: result.insertedId.toString(),
+      username,
+    });
     res.json(
       ApiResponse.success(
         {
@@ -74,6 +86,7 @@ exports.register = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户注册失败", err);
     next(err);
   }
 };
@@ -90,10 +103,16 @@ exports.recordUserAction = async (req, res, next) => {
   const validActions = ["favorited", "deleted"];
 
   if (!questionId || !action) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数", {
+      userId,
+      questionId,
+      action,
+    });
     return res.status(400).json(ApiResponse.error("缺少必要参数"));
   }
 
   if (!validActions.includes(action)) {
+    logHelper.error(req, "【参数验证错误】无效的行为类型", { action });
     return res.status(400).json(ApiResponse.error("无效的行为类型"));
   }
 
@@ -107,8 +126,14 @@ exports.recordUserAction = async (req, res, next) => {
   try {
     const db = await connectDB();
     await db.collection("userActions").insertOne(actionDoc);
+    logHelper.info(req, "【业务逻辑信息】用户行为记录成功", {
+      userId,
+      questionId,
+      action,
+    });
     res.json(ApiResponse.success(null, "记录成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】记录用户行为失败", err);
     next(err);
   }
 };
@@ -122,6 +147,7 @@ exports.forgotPassword = async (req, res, next) => {
   const { email } = req.body;
 
   if (!email) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: email");
     return res.status(400).json(ApiResponse.error("缺少必要参数: email"));
   }
 
@@ -136,6 +162,9 @@ exports.forgotPassword = async (req, res, next) => {
 
     if (!user) {
       // 为了安全起见，即使邮箱不存在也返回成功消息，不泄露用户信息
+      logHelper.info(req, "【业务逻辑信息】忘记密码请求，但邮箱不存在", {
+        email,
+      });
       return res.json(
         ApiResponse.success(null, "如果该邮箱存在，我们已发送重置密码链接")
       );
@@ -160,14 +189,20 @@ exports.forgotPassword = async (req, res, next) => {
 
     // 在实际应用中，这里应该发送邮件到用户邮箱，包含重置密码链接
     // 链接中应包含resetToken和userId参数
-    console.log(
+    logHelper.info(
+      req,
       `生成密码重置令牌 ${resetToken} 给用户 ${user.username}(${user.email})`
     );
 
+    logHelper.info(req, "【业务逻辑信息】忘记密码请求处理成功", {
+      userId: user._id.toString(),
+      email,
+    });
     res.json(
       ApiResponse.success(null, "如果该邮箱存在，我们已发送重置密码链接")
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】忘记密码请求处理失败", err);
     next(err);
   }
 };
@@ -183,6 +218,11 @@ exports.resetPassword = async (req, res, next) => {
   const { userId, resetToken, newPassword } = req.body;
 
   if (!userId || !resetToken || !newPassword) {
+    logHelper.error(
+      req,
+      "【参数验证错误】缺少必要参数: userId、resetToken 和 newPassword",
+      { userId }
+    );
     return res
       .status(400)
       .json(
@@ -204,6 +244,9 @@ exports.resetPassword = async (req, res, next) => {
     });
 
     if (!resetRequest) {
+      logHelper.error(req, "【业务逻辑错误】无效或已过期的重置密码链接", {
+        userId,
+      });
       return res
         .status(400)
         .json(ApiResponse.error("无效或已过期的重置密码链接"));
@@ -231,8 +274,10 @@ exports.resetPassword = async (req, res, next) => {
       }
     );
 
+    logHelper.info(req, "【业务逻辑信息】密码重置成功", { userId });
     res.json(ApiResponse.success(null, "密码重置成功，请使用新密码登录"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】重置密码失败", err);
     next(err);
   }
 };
@@ -259,6 +304,7 @@ exports.getUserInfo = async (req, res, next) => {
   }
 
   if (!token) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: token");
     return res.status(400).json(ApiResponse.error("缺少必要参数: token"));
   }
 
@@ -273,6 +319,7 @@ exports.getUserInfo = async (req, res, next) => {
     });
 
     if (!loginRecord) {
+      logHelper.error(req, "【业务逻辑错误】无效的登录状态，请重新登录");
       return res
         .status(401)
         .json(ApiResponse.error("无效的登录状态，请重新登录"));
@@ -285,10 +332,17 @@ exports.getUserInfo = async (req, res, next) => {
     });
 
     if (!user) {
+      logHelper.error(req, "【业务逻辑错误】用户不存在或已禁用", {
+        userId: loginRecord.userId,
+      });
       return res.status(401).json(ApiResponse.error("用户不存在或已禁用"));
     }
 
     // 返回用户信息（不包含敏感信息如密码）
+    logHelper.info(req, "【业务逻辑信息】获取用户信息成功", {
+      userId: user._id.toString(),
+      username: user.username,
+    });
     res.json(
       ApiResponse.success(
         {
@@ -302,12 +356,10 @@ exports.getUserInfo = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户信息失败", err);
     next(err);
   }
 };
-
-// 引入ObjectId用于MongoDB ID处理
-const { ObjectId } = require("mongodb");
 
 // GET /user-actions/stats
 // 接口用途：获取用户的操作统计信息
@@ -333,8 +385,10 @@ exports.getUserStats = async (req, res, next) => {
       result.total += item.count;
     });
 
+    logHelper.info(req, "【业务逻辑信息】获取用户统计信息成功", { userId });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户统计信息失败", err);
     next(err);
   }
 };
@@ -349,6 +403,7 @@ exports.resetDeletedQuestions = async (req, res, next) => {
 
   // Only allow this endpoint in development environment
   if (process.env.NODE_ENV === "production") {
+    logHelper.error(req, "【业务逻辑错误】此功能仅在开发环境可用", { userId });
     return res
       .status(403)
       .json(ApiResponse.error("Forbidden: Development endpoint only"));
@@ -363,10 +418,15 @@ exports.resetDeletedQuestions = async (req, res, next) => {
       action: "deleted",
     });
 
+    logHelper.info(req, "【业务逻辑信息】成功重置用户删除记录", {
+      userId,
+      deletedCount: result.deletedCount,
+    });
     res.json(
       ApiResponse.success(null, `成功重置 ${result.deletedCount} 条删除记录`)
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】重置用户删除记录失败", err);
     next(err);
   }
 };
@@ -384,6 +444,9 @@ exports.undeleteQuestions = async (req, res, next) => {
     !questionIds ||
     (Array.isArray(questionIds) && questionIds.length === 0)
   ) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: questionIds", {
+      userId,
+    });
     return res.status(400).json(ApiResponse.error("缺少必要参数: questionIds"));
   }
 
@@ -401,10 +464,15 @@ exports.undeleteQuestions = async (req, res, next) => {
       questionId: { $in: questionIdArray.map((id) => new ObjectId(id)) },
     });
 
+    logHelper.info(req, "【业务逻辑信息】成功恢复用户删除的题目", {
+      userId,
+      restoredCount: result.deletedCount,
+    });
     res.json(
       ApiResponse.success(null, `成功恢复 ${result.deletedCount} 道题目`)
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】恢复用户删除的题目失败", err);
     next(err);
   }
 };
@@ -449,6 +517,7 @@ exports.getDeletedQuestions = async (req, res, next) => {
 
     // 如果没有删除的题目，直接返回空列表
     if (deletedActions.length === 0) {
+      logHelper.info(req, "【业务逻辑信息】用户没有删除的题目", { userId });
       return res.json(
         ApiResponse.success({
           questions: [],
@@ -494,8 +563,15 @@ exports.getDeletedQuestions = async (req, res, next) => {
       },
     };
 
+    logHelper.info(req, "【业务逻辑信息】获取用户删除的题目列表成功", {
+      userId,
+      page: pageNum,
+      limit: limitNum,
+      total,
+    });
     res.json(ApiResponse.success(result));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户删除的题目列表失败", err);
     next(err);
   }
 };
@@ -510,6 +586,7 @@ exports.selectSubject = async (req, res, next) => {
   const { userId = "guest", subjectId } = req.body;
 
   if (!subjectId) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: subjectId", { userId });
     return res.status(400).json(ApiResponse.error("缺少必要参数: subjectId"));
   }
 
@@ -522,6 +599,7 @@ exports.selectSubject = async (req, res, next) => {
     });
 
     if (!subject) {
+      logHelper.error(req, "【业务逻辑错误】科目不存在", { userId, subjectId });
       return res.status(500).json(ApiResponse.error("科目不存在"));
     }
 
@@ -549,6 +627,12 @@ exports.selectSubject = async (req, res, next) => {
       result.upsertedCount > 0
         ? "科目选择记录创建成功"
         : "科目选择记录更新成功";
+
+    logHelper.info(req, "【业务逻辑信息】用户选择科目成功", {
+      userId,
+      subjectId,
+      subjectName: subject.name,
+    });
     res.json(
       ApiResponse.success(
         {
@@ -560,6 +644,7 @@ exports.selectSubject = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户选择科目失败", err);
     next(err);
   }
 };
@@ -599,6 +684,7 @@ exports.getCurrentSubject = async (req, res, next) => {
 
     res.json(ApiResponse.success(subject || null));
   } catch (err) {
+    logHelper.error(req, "【系统错误】获取用户当前选择的科目失败", err);
     next(err);
   }
 };
@@ -613,6 +699,9 @@ exports.login = async (req, res, next) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: username 和 password", {
+      username,
+    });
     return res
       .status(400)
       .json(ApiResponse.error("缺少必要参数: username 和 password"));
@@ -628,6 +717,7 @@ exports.login = async (req, res, next) => {
     });
 
     if (!user) {
+      logHelper.error(req, "【业务逻辑错误】用户名或密码错误", { username });
       return res.status(401).json(ApiResponse.error("用户名或密码错误"));
     }
 
@@ -636,6 +726,7 @@ exports.login = async (req, res, next) => {
     const isValidPassword = password === user.password;
 
     if (!isValidPassword) {
+      logHelper.error(req, "【业务逻辑错误】用户名或密码错误", { username });
       return res.status(401).json(ApiResponse.error("用户名或密码错误"));
     }
 
@@ -668,6 +759,10 @@ exports.login = async (req, res, next) => {
     });
 
     // 返回用户信息和token
+    logHelper.info(req, "【业务逻辑信息】用户登录成功", {
+      userId: user._id.toString(),
+      username: user.username,
+    });
     res.json(
       ApiResponse.success(
         {
@@ -682,6 +777,7 @@ exports.login = async (req, res, next) => {
       )
     );
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户登录失败", err);
     next(err);
   }
 };
@@ -696,6 +792,9 @@ exports.logout = async (req, res, next) => {
   const { userId, token } = req.body;
 
   if (!userId || !token) {
+    logHelper.error(req, "【参数验证错误】缺少必要参数: userId 和 token", {
+      userId,
+    });
     return res
       .status(400)
       .json(ApiResponse.error("缺少必要参数: userId 和 token"));
@@ -724,8 +823,10 @@ exports.logout = async (req, res, next) => {
       }
     );
 
+    logHelper.info(req, "【业务逻辑信息】用户退出登录成功", { userId });
     res.json(ApiResponse.success(null, "退出登录成功"));
   } catch (err) {
+    logHelper.error(req, "【系统错误】用户退出登录失败", err);
     next(err);
   }
 };
