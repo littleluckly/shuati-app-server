@@ -9,6 +9,7 @@ const {
   createQuestion,
   updateQuestion,
   exportQuestions,
+  getManagementQuestionList,
 } = require("../controllers/questionController");
 
 router.get("/random", getRandomQuestion);
@@ -18,5 +19,8 @@ router.post("/", createQuestion); // 新增题目
 router.put("/:id", updateQuestion); // 编辑题目
 router.get("/:id", getQuestionById);
 router.post("/export", exportQuestions); // 导出题目
+
+// 管理端题目相关路由
+router.post("/mgt/list", getManagementQuestionList);
 
 module.exports = router;

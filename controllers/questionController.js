@@ -41,7 +41,11 @@ exports.getRandomQuestion = async (req, res, next) => {
 
 // POST /questions/list - 获取过滤的题目列表
 // 接口用途：根据条件过滤获取题目列表，支持分页和排除用户已删除的题目
-// 使用场景：在题目列表页面根据科目、难度、标签等条件筛选题目
+// 使用场景：APP端题目列表页面，默认只显示启用的、有音频文件的题目
+
+// POST /mgt/questions/list - 获取过滤的题目列表（管理端）
+// 接口用途：根据条件过滤获取题目列表，支持分页和排除用户已删除的题目
+// 使用场景：CMS控制台题目列表页面，保留所有过滤参数的灵活性
 // 参数说明：
 // - subjectId: 科目ID，可选，请求体参数
 // - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
@@ -52,7 +56,7 @@ exports.getRandomQuestion = async (req, res, next) => {
 // - page: 页码，默认为1，请求体参数
 // - limit: 每页数量，默认为20，请求体参数
 // - userId: 用户ID，默认为"guest"，用于过滤用户已删除的题目，请求体参数
-exports.getFilteredQuestionList = async (req, res, next) => {
+exports.getManagementQuestionList = async (req, res, next) => {
   const {
     subjectId,
     difficulty,
@@ -131,6 +135,160 @@ exports.getFilteredQuestionList = async (req, res, next) => {
         ];
       }
     }
+
+    // 计算分页参数
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // 使用聚合管道一次性完成过滤和排除已删除题目
+    const pipeline = [
+      { $match: filter },
+      { $lookup: {
+          from: "userActions",
+          let: { questionId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$userId", userId] },
+                    { $eq: ["$action", "deleted"] },
+                    { $eq: ["$questionId", "$$questionId"] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "deletedActions",
+        },
+      },
+      { $match: { deletedActions: { $size: 0 } } }, // 只保留没有被用户删除的题目
+      { $project: { deletedActions: 0 } }, // 移除临时字段
+    ];
+
+    // 获取总数
+    const countPipeline = [...pipeline, { $count: "total" }];
+    const countResult = await db
+      .collection("questions")
+      .aggregate(countPipeline)
+      .toArray();
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+
+    // 获取分页数据
+    const dataPipeline = [
+      ...pipeline,
+      { $sort: { createdAt: -1, _id: 1 } }, // 按创建时间倒序，然后按_id正序确保稳定排序
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
+    const questions = await db
+      .collection("questions")
+      .aggregate(dataPipeline)
+      .toArray();
+
+    const result = {
+      questions,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasNext: pageNum * limitNum < total,
+        hasPrev: pageNum > 1,
+      },
+      filters: {
+        subjectId,
+        difficulty,
+        tags,
+        searchKeyword,
+        hasAudioFiles,
+        isEnabled
+      },
+    };
+
+    logHelper.info(req, "【业务逻辑信息】获取管理端过滤题目列表成功", {
+      page: pageNum,
+      limit: limitNum,
+      total,
+    });
+    res.json(ApiResponse.success(result));
+  } catch (err) {
+    logHelper.error(req, "【系统错误】获取管理端过滤题目列表失败", err);
+    next(err);
+  }
+};
+
+// POST /questions/list - 获取过滤的题目列表
+// 接口用途：根据条件过滤获取题目列表，支持分页和排除用户已删除的题目
+// 使用场景：APP端题目列表页面，默认只显示启用的、有音频文件的题目
+// 参数说明：
+// - subjectId: 科目ID，可选，请求体参数
+// - difficulty: 难度等级，可选，支持单个值或数组，请求体参数
+// - tags: 标签数组，可选，请求体参数
+// - searchKeyword: 搜索关键字，可选，请求体参数，模糊匹配题目相关markdown字段
+// - page: 页码，默认为1，请求体参数
+// - limit: 每页数量，默认为20，请求体参数
+// - userId: 用户ID，默认为"guest"，用于过滤用户已删除的题目，请求体参数
+exports.getFilteredQuestionList = async (req, res, next) => {
+  const {
+    subjectId,
+    difficulty,
+    tags = [],
+    searchKeyword,
+    page = 1,
+    limit = 20,
+    userId = "guest",
+  } = req.body;
+
+  try {
+    const db = await connectDB();
+    const filter = {};
+
+    // 构建过滤条件
+    filter.isDeleted = { $ne: true };
+    
+    // APP端固定显示启用的题目
+    filter.isEnabled = true;
+    
+    // APP端固定显示有音频文件的题目
+    filter.$and = [
+      { files: { $exists: true } },
+      { $expr: { $ne: [{ $size: { $objectToArray: "$files" } }, 0] } },
+    ];
+    if (subjectId) {
+      filter.subjectId = new ObjectId(subjectId);
+    }
+
+    if (difficulty) {
+      if (Array.isArray(difficulty)) {
+        // 如果是数组，使用 $in 操作符
+        filter.difficulty = { $in: difficulty };
+      } else {
+        // 如果是单个值，直接匹配
+        filter.difficulty = difficulty;
+      }
+    }
+
+    // 支持多个标签过滤
+    if (tags && tags.length > 0) {
+      // 处理新数据格式中标签可能是字符串数组的情况
+      filter.tags = { $in: tags };
+    }
+
+    // 添加搜索关键字模糊匹配
+    if (searchKeyword && searchKeyword.trim()) {
+      const keyword = searchKeyword.trim();
+      filter.$or = [
+        { question_markdown: { $regex: keyword, $options: "i" } },
+        { answer_simple_markdown: { $regex: keyword, $options: "i" } },
+        { answer_detail_markdown: { $regex: keyword, $options: "i" } },
+        { answer_analysis_markdown: { $regex: keyword, $options: "i" } },
+      ];
+    }
+
+
 
     // 计算分页参数
     const pageNum = parseInt(page);
