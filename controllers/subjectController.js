@@ -259,6 +259,20 @@ exports.getSubjects = async (req, res, next) => {
       .limit(limit)
       .toArray();
 
+    // 为每个科目添加题目数量统计
+    const subjectsWithQuestionCount = await Promise.all(
+      subjectsData.map(async (subject) => {
+        const questionCount = await db
+          .collection("questions")
+          .countDocuments({ subjectId: subject._id });
+        
+        return {
+          ...subject,
+          questionCount
+        };
+      })
+    );
+
     // 获取总记录数
     const total = await db.collection("subjects").countDocuments(query);
 
@@ -267,7 +281,7 @@ exports.getSubjects = async (req, res, next) => {
 
     // 构建响应数据，保持与题目列表接口格式一致
     const responseData = {
-      subjects: subjectsData,
+      subjects: subjectsWithQuestionCount,
       pagination: {
         page,
         limit,
