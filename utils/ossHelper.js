@@ -23,18 +23,6 @@ function initOSSClient() {
   }
 }
 
-// 下载OSS文件到本地临时路径
-async function downloadOSSFile(client, ossFilePath, localFilePath) {
-  try {
-    await client.get(ossFilePath, localFilePath);
-    logger.info(`OSS文件下载成功: ${ossFilePath} -> ${localFilePath}`);
-    return localFilePath;
-  } catch (error) {
-    logger.error(`OSS文件下载失败: ${ossFilePath}`, error);
-    throw new Error(`OSS文件下载失败: ${error.message}`);
-  }
-}
-
 // 流式下载OSS文件
 async function streamOSSFile(client, ossFilePath) {
   try {
@@ -62,7 +50,6 @@ async function checkOSSFileExists(client, ossFilePath) {
 
 module.exports = {
   initOSSClient,
-  downloadOSSFile,
   streamOSSFile,
   checkOSSFileExists,
 };
