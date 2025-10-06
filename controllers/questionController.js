@@ -3,6 +3,7 @@ const { ObjectId } = require("mongodb");
 const { connectDB } = require("../config/db");
 const ApiResponse = require("../utils/ApiResponse");
 const logHelper = require("../utils/logWithEndpoint");
+const { initOSSClient, streamOSSFile } = require("../utils/ossHelper");
 
 // GET /questions/random
 // 接口用途：随机获取一道题目
@@ -144,7 +145,8 @@ exports.getManagementQuestionList = async (req, res, next) => {
     // 使用聚合管道一次性完成过滤和排除已删除题目
     const pipeline = [
       { $match: filter },
-      { $lookup: {
+      {
+        $lookup: {
           from: "userActions",
           let: { questionId: "$_id" },
           pipeline: [
@@ -204,7 +206,7 @@ exports.getManagementQuestionList = async (req, res, next) => {
         tags,
         searchKeyword,
         hasAudioFiles,
-        isEnabled
+        isEnabled,
       },
     };
 
@@ -248,10 +250,10 @@ exports.getFilteredQuestionList = async (req, res, next) => {
 
     // 构建过滤条件
     filter.isDeleted = { $ne: true };
-    
+
     // APP端固定显示启用的题目
     filter.isEnabled = true;
-    
+
     // APP端固定显示有音频文件的题目
     filter.$and = [
       { files: { $exists: true } },
@@ -287,8 +289,6 @@ exports.getFilteredQuestionList = async (req, res, next) => {
         { answer_analysis_markdown: { $regex: keyword, $options: "i" } },
       ];
     }
-
-
 
     // 计算分页参数
     const pageNum = parseInt(page);
@@ -902,6 +902,61 @@ exports.getQuestionById = async (req, res, next) => {
     res.json(ApiResponse.success(question));
   } catch (err) {
     logHelper.error(req, "【系统错误】获取题目详情失败", err);
+    next(err);
+  }
+};
+
+// GET /questions/audio/download/:fileName
+// 接口用途：从OSS下载题目音频文件
+// 使用场景：在题目详情页面播放音频
+// 参数说明：
+// - fileName: 音频文件名，路径参数
+exports.downloadAudioFile = async (req, res, next) => {
+  const { fileName } = req.params;
+
+  try {
+    // 验证参数
+    if (!fileName) {
+      logHelper.error(req, "【业务逻辑错误】题目ID或文件名不能为空", {
+        fileName,
+      });
+      return res.status(400).json(ApiResponse.error("文件名不能为空"));
+    }
+
+    // 初始化OSS客户端
+    const ossClient = initOSSClient();
+
+    // 构建OSS文件路径
+    //questions-audio/q042eb5a6_audio_answer_detail.mp3
+    // const ossFilePath = `questions-audio/${fileName}.mp3`;
+    const ossFilePath = `questions-audio/q042eb5a6_audio_answer_detail.mp3`;
+
+    // 从OSS流式获取文件
+    const result = await streamOSSFile(ossClient, ossFilePath);
+
+    // 设置响应头
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${encodeURIComponent(fileName)}"`
+    );
+
+    // 流式传输文件给前端
+    result.stream.pipe(res);
+
+    logHelper.info(req, "【业务逻辑信息】音频文件下载成功", {
+      fileName,
+    });
+  } catch (err) {
+    // 处理错误情况
+    if (err.code === "NoSuchKey") {
+      logHelper.error(req, "【业务逻辑错误】音频文件不存在", {
+        fileName,
+      });
+      return res.status(404).json(ApiResponse.error("音频文件不存在"));
+    }
+
+    logHelper.error(req, "【系统错误】音频文件下载失败", err);
     next(err);
   }
 };

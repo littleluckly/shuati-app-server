@@ -10,6 +10,7 @@ const {
   updateQuestion,
   exportQuestions,
   getManagementQuestionList,
+  downloadAudioFile,
 } = require("../controllers/questionController");
 
 router.get("/random", getRandomQuestion);
@@ -22,5 +23,8 @@ router.post("/export", exportQuestions); // 导出题目
 
 // 管理端题目相关路由
 router.post("/mgt/list", getManagementQuestionList);
+
+// 音频文件下载接口
+router.get("/audio/download/:fileName", downloadAudioFile);
 
 module.exports = router;
