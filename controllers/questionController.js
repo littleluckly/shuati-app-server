@@ -928,8 +928,8 @@ exports.downloadAudioFile = async (req, res, next) => {
 
     // 构建OSS文件路径
     //questions-audio/q042eb5a6_audio_answer_detail.mp3
-    // const ossFilePath = `questions-audio/${fileName}.mp3`;
-    const ossFilePath = `questions-audio/q042eb5a6_audio_answer_detail.mp3`;
+    const ossFilePath = `questions-audio/${fileName}`;
+    // const ossFilePath = `questions-audio/q042eb5a6_audio_answer_detail.mp3`;
 
     // 从OSS或缓存流式获取文件
     const result = await streamOSSFile(ossClient, ossFilePath);
@@ -947,7 +947,7 @@ exports.downloadAudioFile = async (req, res, next) => {
     // 记录日志，包含是否从缓存读取
     logHelper.info(req, "【业务逻辑信息】音频文件下载成功", {
       fileName,
-      fromCache: result.fromCache
+      fromCache: result.fromCache,
     });
   } catch (err) {
     // 处理错误情况
