@@ -226,9 +226,12 @@ async function streamOSSFile(client, ossFilePath) {
   try {
     // 首先检查文件是否在缓存中且有效
     if (await isFileCached(ossFilePath)) {
+      // 获取缓存文件大小
+      const cacheFilePath = getCacheFilePath(ossFilePath);
+      const stats = await fsPromises.stat(cacheFilePath);
       // 从缓存中读取文件流
       const cachedStream = readFileFromCache(ossFilePath);
-      return { stream: cachedStream, fromCache: true };
+      return { stream: cachedStream, fromCache: true, size: stats.size };
     }
     
     // 缓存不存在或已过期，从OSS获取文件流
@@ -241,7 +244,11 @@ async function streamOSSFile(client, ossFilePath) {
         logger.warn(`文件缓存保存失败（不影响主流程）: ${ossFilePath}`, err);
       });
     
-    return { stream: ossStreamResult.stream, fromCache: false };
+    // 从OSS响应头获取文件大小
+    const contentLength = ossStreamResult.res.headers['content-length'] ? 
+      parseInt(ossStreamResult.res.headers['content-length']) : 0;
+    
+    return { stream: ossStreamResult.stream, fromCache: false, size: contentLength };
   } catch (error) {
     logger.error(`OSS文件流式获取失败: ${ossFilePath}`, error);
     throw new Error(`OSS文件流式获取失败: ${error.message}`);

@@ -940,6 +940,10 @@ exports.downloadAudioFile = async (req, res, next) => {
       "Content-Disposition",
       `inline; filename="${encodeURIComponent(fileName)}"`
     );
+    // 设置Content-Length头部
+    if (result.size) {
+      res.setHeader("Content-Length", result.size);
+    }
 
     // 流式传输文件给前端
     result.stream.pipe(res);
