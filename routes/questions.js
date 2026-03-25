@@ -8,6 +8,7 @@ const {
   getQuestionById,
   createQuestion,
   updateQuestion,
+  deleteQuestion,
   exportQuestions,
   getManagementQuestionList,
   downloadAudioFile,
@@ -18,6 +19,7 @@ router.post("/random-list", getRandomQuestionList);
 router.post("/list", getFilteredQuestionList);
 router.post("/", createQuestion); // 新增题目
 router.put("/:id", updateQuestion); // 编辑题目
+router.delete("/:id", deleteQuestion); // 删除题目
 router.get("/:id", getQuestionById);
 router.post("/export", exportQuestions); // 导出题目
 
