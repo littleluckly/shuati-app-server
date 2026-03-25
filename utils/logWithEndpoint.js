@@ -16,7 +16,7 @@ function logWithEndpoint(req, level, message, meta = {}) {
   const requestParams = {
     query: req.query || {},
     body: req.body || {},
-    params: req.params || {}
+    params: req.params || {},
   };
 
   // 添加接口地址、请求方法和请求参数到元数据
@@ -24,13 +24,18 @@ function logWithEndpoint(req, level, message, meta = {}) {
     ...meta,
     endpoint,
     method,
-    requestParams
+    requestParams,
   };
+
+  // 在日志消息开头增加时间
+  const timestamp = new Date().toISOString();
+  const messageWithTime = `[${timestamp}] ${message}`;
+
   // 调用对应的logger方法
   if (logger[level]) {
-    logger[level](message, enhancedMeta);
+    logger[level](messageWithTime, enhancedMeta);
   } else {
-    logger.info(message, enhancedMeta);
+    logger.info(messageWithTime, enhancedMeta);
   }
 }
 

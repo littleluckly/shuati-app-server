@@ -3,10 +3,10 @@ module.exports = {
     {
       name: "shuati-app-server",
       script: "server.js",
-      watch: true,
+      watch: false,
       ignore_watch: [
         "node_modules",
-        "logs",
+        "logs/**/*",
         "raw-assets",
         "cache",
         "docs",
