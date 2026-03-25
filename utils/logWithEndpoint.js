@@ -27,8 +27,16 @@ function logWithEndpoint(req, level, message, meta = {}) {
     requestParams,
   };
 
-  // 在日志消息开头增加时间
-  const timestamp = new Date().toISOString();
+  // 在日志消息开头增加时间（东八区格式）
+  const now = new Date();
+  const utc8Time = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const year = utc8Time.getUTCFullYear();
+  const month = String(utc8Time.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(utc8Time.getUTCDate()).padStart(2, "0");
+  const hours = String(utc8Time.getUTCHours()).padStart(2, "0");
+  const minutes = String(utc8Time.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(utc8Time.getUTCSeconds()).padStart(2, "0");
+  const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   const messageWithTime = `[${timestamp}] ${message}`;
 
   // 调用对应的logger方法
